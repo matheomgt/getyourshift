@@ -255,17 +255,14 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
 <div id="pinScreen">
   <div class="pin-logo">Get Your <span>Shift</span></div>
   <div class="pin-subtitle">Administration</div>
-  <div class="pin-card" onclick="document.getElementById('pinInput').focus()">
+  <div class="pin-card">
     <div class="pin-card-title">Accès admin 🔐</div>
-    <div class="pin-card-sub">Appuie sur les points pour ouvrir le clavier</div>
-    <div style="display:flex;gap:16px;justify-content:center;margin-bottom:20px;padding:20px 0;cursor:pointer;" onclick="document.getElementById('pinInput').focus()">
+    <div class="pin-card-sub">Entre ton code à 4 chiffres</div>
+    <div style="display:flex;gap:16px;justify-content:center;margin-bottom:24px;padding:16px 0;">
       <div class="pin-dot" id="pd0"></div>
       <div class="pin-dot" id="pd1"></div>
       <div class="pin-dot" id="pd2"></div>
       <div class="pin-dot" id="pd3"></div>
-    </div>
-    <div onclick="document.getElementById('pinInput').focus()" style="text-align:center;background:rgba(45,74,45,0.07);border:1.5px dashed rgba(45,74,45,0.2);border-radius:12px;padding:12px;margin-bottom:14px;cursor:pointer;color:var(--forest);font-size:13px;font-weight:500;">
-      🔢 Appuie ici → clavier numérique
     </div>
     <input
       id="pinInput"
@@ -274,15 +271,28 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
       pattern="[0-9]*"
       maxlength="4"
       autocomplete="one-time-code"
-      style="
-        position:absolute;
-        opacity:0;
-        width:1px;
-        height:1px;
-        top:0;left:0;
-        pointer-events:none;
-      "
+      placeholder="0000"
       oninput="handlePinInput(this.value)"
+      style="
+        display:block;
+        width:100%;
+        text-align:center;
+        font-size:36px;
+        letter-spacing:18px;
+        padding:14px 8px;
+        border:2px solid rgba(45,74,45,0.2);
+        border-radius:14px;
+        background:var(--cream2);
+        color:var(--forest);
+        font-family:'Cormorant Garamond',serif;
+        font-weight:700;
+        outline:none;
+        -webkit-appearance:none;
+        appearance:none;
+        margin-bottom:14px;
+        box-sizing:border-box;
+        caret-color:var(--forest);
+      "
     >
     <div class="pin-error" id="pinError">Code incorrect — réessaie</div>
     <div class="pin-hint">Code par défaut : 1234</div>
@@ -591,13 +601,7 @@ function doLock(){
   for(var i=0;i<4;i++){var el=document.getElementById('pd'+i);if(el)el.classList.remove('filled');}
   setTimeout(function(){ document.getElementById('pinInput').focus(); },400);
 }
-// Auto-focus on load — works on https
-window.addEventListener('load', function(){
-  setTimeout(function(){ 
-    var inp=document.getElementById('pinInput');
-    if(inp) inp.focus();
-  }, 600);
-});
+
 function savePin(){const p=(document.getElementById('newPin').value||'').trim();if(p.length!==4||isNaN(p)){showToast('PIN doit être 4 chiffres');return;}DB.set(PIN_KEY,p);showToast('✅ PIN mis à jour');}
 function clearData(){if(!confirm('Effacer TOUTES les données ?'))return;localStorage.clear();showToast('Données effacées');setTimeout(()=>location.reload(),800);}
 
