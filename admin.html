@@ -258,7 +258,7 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
   <div class="pin-card">
     <div class="pin-card-title">Accès admin 🔐</div>
     <div class="pin-card-sub">Entre ton code à 4 chiffres</div>
-    <div style="display:flex;gap:16px;justify-content:center;margin-bottom:24px;padding:16px 0;">
+    <div style="display:flex;gap:16px;justify-content:center;margin-bottom:20px;padding:12px 0;">
       <div class="pin-dot" id="pd0"></div>
       <div class="pin-dot" id="pd1"></div>
       <div class="pin-dot" id="pd2"></div>
@@ -273,6 +273,8 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
       autocomplete="one-time-code"
       placeholder="0000"
       oninput="handlePinInput(this.value)"
+      onkeyup="handlePinInput(this.value)"
+      onchange="handlePinInput(this.value)"
       style="
         display:block;
         width:100%;
@@ -289,11 +291,25 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
         outline:none;
         -webkit-appearance:none;
         appearance:none;
-        margin-bottom:14px;
+        margin-bottom:12px;
         box-sizing:border-box;
         caret-color:var(--forest);
       "
     >
+    <button onclick="submitPin()" style="
+      width:100%;
+      background:var(--forest);
+      color:var(--cream);
+      border:none;
+      border-radius:14px;
+      padding:16px;
+      font-family:'Cormorant Garamond',serif;
+      font-size:19px;
+      font-weight:600;
+      cursor:pointer;
+      margin-bottom:12px;
+      touch-action:manipulation;
+    ">Valider →</button>
     <div class="pin-error" id="pinError">Code incorrect — réessaie</div>
     <div class="pin-hint">Code par défaut : 1234</div>
   </div>
@@ -570,25 +586,38 @@ let pinBuffer='',dashWeekOff=0,ptgWeekOff=0,payWeekOff=0,editingWorkerIdx=null,p
 function getPin(){return DB.get(PIN_KEY,'1234');}
 
 function handlePinInput(val){
-  // Keep only digits, max 4
   var digits = val.replace(/\D/g,'').slice(0,4);
-  // Update dots
   for(var i=0;i<4;i++){
     var el=document.getElementById('pd'+i);
     if(el) el.classList.toggle('filled', i<digits.length);
   }
   if(digits.length===4){
-    if(digits===getPin()){
-      document.getElementById('pinInput').value='';
-      unlockApp();
-    } else {
-      document.getElementById('pinError').classList.add('show');
-      document.getElementById('pinInput').value='';
-      for(var i=0;i<4;i++){var el=document.getElementById('pd'+i);if(el)el.classList.remove('filled');}
-      setTimeout(function(){
-        document.getElementById('pinError').classList.remove('show');
-      }, 900);
-    }
+    checkPin(digits);
+  }
+}
+
+function submitPin(){
+  var val=document.getElementById('pinInput').value;
+  var digits=val.replace(/\D/g,'').slice(0,4);
+  if(digits.length<4){
+    document.getElementById('pinError').classList.add('show');
+    document.getElementById('pinError').textContent='Entre 4 chiffres';
+    setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1500);
+    return;
+  }
+  checkPin(digits);
+}
+
+function checkPin(digits){
+  if(digits===getPin()){
+    document.getElementById('pinInput').value='';
+    unlockApp();
+  } else {
+    document.getElementById('pinError').textContent='Code incorrect — réessaie';
+    document.getElementById('pinError').classList.add('show');
+    document.getElementById('pinInput').value='';
+    for(var i=0;i<4;i++){var el=document.getElementById('pd'+i);if(el)el.classList.remove('filled');}
+    setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1200);
   }
 }
 
