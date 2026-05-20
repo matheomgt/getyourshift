@@ -292,6 +292,1186 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
         box-sizing:border-box;
       "
     >
+    <a href="javascript:doCheckPin()" style="
+      display:block;
+      width:100%;
+      background:var(--forest);
+      color:var(--cream);
+      border-radius:14px;
+      padding:17px;
+      font-family:'Cormorant Garamond',serif;
+      font-size:19px;
+      font-weight:600;
+      text-align:center;
+      cursor:pointer;
+      margin-bottom:12px;
+      text-decoration:none;
+      box-sizing:border-box;
+    ">Valider →</a>
+    <div class="pin-error" id="pinError">Code incorrect — réessaie</div>
+    <div class="pin-hint">Code par défaut : 1234</div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="appMain">
+  <div class="app-header">
+    <div class="header-top">
+      <div>
+        <div class="header-logo">Get Your <span>Shift</span></div>
+        <div class="header-date" id="adminDate">—</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <div class="admin-tag">Admin</div>
+        <button class="lock-btn" onclick="doLock()">🔒 Verrouiller</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-bar-top">
+    <div class="tbt active" onclick="showTab('dashboard')">📊 Dashboard</div>
+    <div class="tbt" onclick="showTab('workers')">👷 Équipe</div>
+    <div class="tbt" onclick="showTab('pointages')">📍 Pointages</div>
+    <div class="tbt" onclick="showTab('galerie')">📸 Galerie</div>
+    <div class="tbt" onclick="showTab('fiches')">📋 Fiches</div>
+    <div class="tbt" onclick="showTab('paiements')">💰 Paiements</div>
+    <div class="tbt" onclick="showTab('settings')">⚙️ Réglages</div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="tcontent active" id="tab-dashboard">
+    <div class="week-nav">
+      <button class="wnav-btn" onclick="changeWeek(-1)">‹</button>
+      <div class="wnav-label" id="dashWeekLbl">—</div>
+      <button class="wnav-btn" onclick="changeWeek(1)">›</button>
+    </div>
+    <div class="commission-block">
+      <div class="comm-label">Ta commission</div>
+      <div class="comm-val"><span class="comm-dollar">$</span><span id="dashCommission">0</span></div>
+      <div class="comm-sub" id="dashCommSub">—</div>
+    </div>
+    <div class="bento2">
+      <div class="bcard dark"><div class="blabel">Boss te donne</div><div class="bval"><span id="dashBoss">0</span><span class="bunit">$</span></div></div>
+      <div class="bcard gold-card"><div class="blabel">Tu paies</div><div class="bval"><span id="dashPaid">0</span><span class="bunit">$</span></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Récap par laboureur</div>
+      <div id="dashWorkerRows"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <button class="btn btn-surface" onclick="copyRecap()">📋 Copier récap</button>
+      <button class="btn btn-gold" onclick="exportPDF()">📄 Export PDF</button>
+    </div>
+  </div>
+
+  <!-- WORKERS -->
+  <div class="tcontent" id="tab-workers">
+    <button class="btn btn-forest" onclick="toggleNewWorker()" style="margin-bottom:12px;">+ Ajouter un laboureur</button>
+    <div class="expand-panel" id="newWorkerPanel">
+      <div class="card-title">Nouveau laboureur</div>
+      <label class="inp-label">Prénom</label>
+      <input class="inp" id="nwName" placeholder="ex: Louis">
+      <div class="inp-row">
+        <div><label class="inp-label">Jours totaux (existant)</label><input class="inp" id="nwDays" placeholder="0" type="number"></div>
+        <div><label class="inp-label">Taux fixe $ (optionnel)</label><input class="inp" id="nwCustomRate" placeholder="auto"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-surface" onclick="toggleNewWorker()">Annuler</button>
+        <button class="btn btn-forest" onclick="addWorker()">Ajouter</button>
+      </div>
+    </div>
+    <div id="workerCards"></div>
+  </div>
+
+  <!-- PIN MANAGEMENT MODAL -->
+  <div class="modal-overlay" id="pinMgmtModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="pinMgmtName">PIN de —</div>
+      <div class="modal-sub">Code actuel affiché ci-dessous. Tu peux le réinitialiser.</div>
+      <div style="background:var(--cream2);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px;">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px;">Code PIN actuel</div>
+        <div id="pinMgmtCurrent" style="font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:600;color:var(--forest);letter-spacing:12px;">——</div>
+      </div>
+      <button class="btn btn-danger" onclick="resetWorkerPin()" style="margin-bottom:8px;">🔄 Réinitialiser le PIN</button>
+      <button class="btn btn-surface" onclick="document.getElementById('pinMgmtModal').classList.remove('open')">Fermer</button>
+      <div style="font-size:11px;color:var(--text-soft);margin-top:10px;text-align:center;">Après réinitialisation, le worker devra créer un nouveau PIN à sa prochaine connexion.</div>
+    </div>
+  </div>
+
+  <!-- POINTAGES -->
+  <div class="tcontent" id="tab-pointages">
+    <div class="week-nav">
+      <button class="wnav-btn" onclick="changePtgWeek(-1)">‹</button>
+      <div class="wnav-label" id="ptgWeekLbl">—</div>
+      <button class="wnav-btn" onclick="changePtgWeek(1)">›</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Tous les pointages</div>
+      <div id="ptgList"></div>
+    </div>
+  </div>
+
+  <!-- GALERIE -->
+  <div class="tcontent" id="tab-galerie">
+    <div class="week-nav">
+      <button class="wnav-btn" onclick="changeGalWeek(-1)">‹</button>
+      <div class="wnav-label" id="galWeekLbl">—</div>
+      <button class="wnav-btn" onclick="changeGalWeek(1)">›</button>
+    </div>
+    <div class="card" style="margin-bottom:10px;">
+      <div class="card-title">Filtrer par worker</div>
+      <div class="filter-pills" id="galFilterPills"></div>
+    </div>
+    <div class="card">
+      <div class="gallery-section">
+        <div class="gallery-section-title">🌅 <span class="gtag arrive">Arrivées</span></div>
+        <div class="gallery-grid" id="adminGalArrivee"></div>
+      </div>
+      <div class="gallery-section">
+        <div class="gallery-section-title">🌇 <span class="gtag depart">Départs</span></div>
+        <div class="gallery-grid" id="adminGalDepart"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text-soft);text-align:center;margin-top:4px;">Photos supprimées automatiquement après 14 jours</div>
+    </div>
+  </div>
+
+  <!-- FICHES WORKERS -->
+  <div class="tcontent" id="tab-fiches">
+    <div id="ficheWorkerSelect" style="margin-bottom:10px;">
+      <div class="card-title" style="margin-bottom:10px;">Choisir un worker</div>
+      <div id="ficheSelectList"></div>
+    </div>
+    <div id="ficheContent" style="display:none;">
+      <button onclick="closeFiche()" style="display:flex;align-items:center;gap:6px;background:var(--cream2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:12px;cursor:pointer;margin-bottom:12px;color:var(--text-dark);">← Retour</button>
+
+      <!-- Header -->
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+          <div id="ficheAvatar" style="width:52px;height:52px;background:var(--forest);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--cream);flex-shrink:0;"></div>
+          <div>
+            <div id="ficheName" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text-dark);"></div>
+            <div id="ficheRate" style="font-size:11px;color:var(--sage);margin-top:2px;font-weight:500;"></div>
+          </div>
+          <div id="ficheIncidentBadge" style="margin-left:auto;display:none;" class="incident-badge">⚠️ <span id="ficheIncidentCount">0</span> incident(s)</div>
+        </div>
+        <div class="fiche-stat-grid">
+          <div class="fiche-stat"><div class="fiche-stat-val" id="ficheTotalDays">0</div><div class="fiche-stat-label">Jours total</div></div>
+          <div class="fiche-stat"><div class="fiche-stat-val" id="ficheTotalEarned">$0</div><div class="fiche-stat-label">Gagné total</div></div>
+          <div class="fiche-stat"><div class="fiche-stat-val" id="ficheChantiers">0</div><div class="fiche-stat-label">Chantiers</div></div>
+        </div>
+      </div>
+
+      <!-- Graph 8 semaines -->
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-title">Activité — 8 dernières semaines</div>
+        <div class="chart-wrap" id="ficheChart"></div>
+        <div style="display:flex;justify-content:space-between;" id="ficheChartLabels"></div>
+      </div>
+
+      <!-- Calendrier -->
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div class="card-title" style="margin-bottom:0;">Calendrier</div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="ficheCalMonth(-1)" style="background:var(--cream2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;font-size:14px;cursor:pointer;">‹</button>
+            <div id="ficheCalLabel" style="font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:600;color:var(--text-dark);line-height:30px;min-width:100px;text-align:center;"></div>
+            <button onclick="ficheCalMonth(1)" style="background:var(--cream2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;font-size:14px;cursor:pointer;">›</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px;">
+          ${['L','M','M','J','V','S','D'].map(d=>`<div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">${d}</div>`).join('')}
+        </div>
+        <div class="cal-grid" id="ficheCalGrid"></div>
+      </div>
+
+      <!-- Chantiers -->
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-title">Chantiers visités</div>
+        <div id="ficheChantiersList"></div>
+      </div>
+
+      <!-- NOTES PRIVÉES (admin only) -->
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-title">📝 Notes privées (non visibles par le worker)</div>
+        <textarea class="note-area" id="ficheNotes" placeholder="Ex: Bon worker, ponctuel. Préfère les chantiers Nord Shore…" oninput="saveFicheNotes()"></textarea>
+        <div style="font-size:10px;color:var(--text-soft);margin-top:4px;">Sauvegarde automatique</div>
+      </div>
+
+      <!-- INCIDENTS -->
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-title">⚠️ Incidents</div>
+        <div id="ficheIncidentList"></div>
+        <div style="margin-top:12px;">
+          <input class="inp" id="ficheIncidentInput" placeholder="Décrire l'incident…">
+          <button class="btn btn-danger" onclick="addFicheIncident()" style="margin-top:4px;">+ Signaler un incident</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAIEMENTS -->
+  <div class="tcontent" id="tab-paiements">
+    <div class="week-nav">
+      <button class="wnav-btn" onclick="changePayWeek(-1)">‹</button>
+      <div class="wnav-label" id="payWeekLbl">—</div>
+      <button class="wnav-btn" onclick="changePayWeek(1)">›</button>
+    </div>
+    <div id="payList"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="tcontent" id="tab-settings">
+    <div class="card">
+      <div class="card-title">Code PIN administrateur</div>
+      <label class="inp-label">Nouveau code PIN (4 chiffres)</label>
+      <input class="inp" id="newPin" placeholder="ex: 7294" type="number">
+      <button class="btn btn-forest" onclick="savePin()">Enregistrer le code</button>
+    </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">Données</div>
+      <button class="btn btn-danger" onclick="clearData()">🗑 Effacer toutes les données</button>
+      <div style="font-size:11px;color:var(--text-soft);margin-top:8px;text-align:center;">Action irréversible</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAY MODAL -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="payModalTitle">Marquer comme payé</div>
+    <div class="modal-sub" id="payModalSub">Photo du virement obligatoire</div>
+    <div class="photo-zone" id="payPhotoZone" onclick="document.getElementById('payPhotoInput').click()">
+      <div class="pz-icon">📱</div><div class="pz-text">Photo du virement bancaire</div>
+    </div>
+    <input type="file" id="payPhotoInput" accept="image/*" style="display:none;" onchange="handlePayPhoto(event)">
+    <button class="btn btn-sage" onclick="confirmPay()">✅ Valider le paiement</button>
+    <button class="btn btn-surface" onclick="document.getElementById('payModal').classList.remove('open')" style="margin-top:8px;">Annuler</button>
+  </div>
+</div>
+
+<!-- EDIT WORKER MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Modifier laboureur</div>
+    <div class="modal-sub">Modifications appliquées immédiatement</div>
+    <label class="inp-label">Prénom</label>
+    <input class="inp" id="editName">
+    <div class="inp-row">
+      <div><label class="inp-label">Jours totaux</label><input class="inp" id="editDays" type="number"></div>
+      <div><label class="inp-label">Taux fixe $ (0=auto)</label><input class="inp" id="editCustomRate" type="number"></div>
+    </div>
+    <label class="inp-label">Extra paye ($)</label>
+    <input class="inp" id="editExtra" type="number" placeholder="0">
+    <label class="inp-label">Note extra</label>
+    <input class="inp" id="editExtraNote" placeholder="ex: prime, transport…">
+    <div class="btn-row">
+      <button class="btn btn-surface" onclick="document.getElementById('editModal').classList.remove('open')">Annuler</button>
+      <button class="btn btn-forest" onclick="saveWorkerEdit()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DB={get:(k,d=null)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
+const PIN_KEY='tp_admin_pin';
+let pinBuffer='',dashWeekOff=0,ptgWeekOff=0,payWeekOff=0,editingWorkerIdx=null,payingWorkerIdx=null,payPhotoData=null,payWeekOffsetSnap=0;
+
+function getPin(){return DB.get(PIN_KEY,'1234');}
+
+function updateDots(){
+  var val=String(document.getElementById('pinInput').value||'');
+  var n=val.replace(/[^0-9]/g,'').length;
+  for(var i=0;i<4;i++){
+    var el=document.getElementById('pd'+i);
+    if(el) el.classList.toggle('filled', i<n);
+  }
+}
+
+function doCheckPin(){
+  var val=String(document.getElementById('pinInput').value||'');
+  var digits=val.replace(/[^0-9]/g,'').slice(0,4);
+  updateDots();
+  if(digits.length<4){
+    document.getElementById('pinError').textContent='Entre 4 chiffres complets';
+    document.getElementById('pinError').classList.add('show');
+    setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1500);
+    return;
+  }
+  if(digits===getPin()){
+    document.getElementById('pinInput').value='';
+    updateDots();
+    document.getElementById('pinScreen').style.display='none';
+    document.getElementById('appMain').style.display='block';
+    initAdmin();
+  } else {
+    document.getElementById('pinError').textContent='Code incorrect — réessaie';
+    document.getElementById('pinError').classList.add('show');
+    document.getElementById('pinInput').value='';
+    updateDots();
+    setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1200);
+  }
+}
+
+function unlockApp(){
+  document.getElementById('pinScreen').style.display='none';
+  document.getElementById('appMain').style.display='block';
+  initAdmin();
+}
+
+function doLock(){
+  document.getElementById('appMain').style.display='none';
+  document.getElementById('pinScreen').style.display='flex';
+  document.getElementById('pinInput').value='';
+  updateDots();
+}
+
+function savePin(){
+  var p=(document.getElementById('newPin').value||'').trim();
+  if(p.length!==4||isNaN(p)){showToast('PIN doit être 4 chiffres');return;}
+  DB.set(PIN_KEY,p);
+  showToast('✅ PIN mis à jour');
+}
+function clearData(){if(!confirm('Effacer TOUTES les données ?'))return;localStorage.clear();showToast('Données effacées');setTimeout(()=>location.reload(),800);}
+
+function showTab(id){
+  document.querySelectorAll('.tbt').forEach((t,i)=>t.classList.toggle('active',['dashboard','workers','pointages','galerie','fiches','paiements','settings'][i]===id));
+  document.querySelectorAll('.tcontent').forEach(c=>c.classList.toggle('active',c.id==='tab-'+id));
+  if(id==='dashboard')renderDashboard();
+  if(id==='workers')renderWorkers();
+  if(id==='pointages')renderPointages();
+  if(id==='galerie')renderAdminGallery();
+  if(id==='fiches')renderFicheSelect();
+  if(id==='paiements')renderPaiements();
+}
+
+function getWorkers(){return DB.get('tp_workers',[]);}
+function getEntries(){return DB.get('tp_entries',[]);}
+function saveWorkers(w){DB.set('tp_workers',w);}
+function saveEntries(e){DB.set('tp_entries',e);}
+function formatDate(d){return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});}
+function getWeekStart(o=0){const n=new Date(),m=new Date(n);m.setDate(n.getDate()-((n.getDay()+6)%7)+o*7);m.setHours(0,0,0,0);return m;}
+function getWeekEnd(o=0){const s=getWeekStart(o),e=new Date(s);e.setDate(s.getDate()+6);e.setHours(23,59,59,999);return e;}
+function weekLbl(o){const s=getWeekStart(o),e=getWeekEnd(o);return s.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' – '+e.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});}
+
+function computeWorkerWeek(wIdx,off=0){
+  const entries=getEntries(),s=getWeekStart(off),e=getWeekEnd(off);
+  const week=entries.filter(en=>en.workerIdx===wIdx&&new Date(en.date)>=s&&new Date(en.date)<=e);
+  return[...new Set(week.map(en=>en.date))].sort();
+}
+function computeSalary(wIdx,daysArr){
+  const workers=getWorkers(),w=workers[wIdx];
+  const totalBefore=(w.totalDays||0)-daysArr.length;
+  if(w.customRate)return{sal:w.customRate*daysArr.length,days220:0,days250:daysArr.length};
+  let sal=0,days220=0,days250=0;
+  for(let i=0;i<daysArr.length;i++){if(totalBefore+i<7){sal+=220;days220++;}else{sal+=250;days250++;}}
+  return{sal,days220,days250};
+}
+
+function initAdmin(){
+  const now=new Date();
+  document.getElementById('adminDate').textContent=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  renderDashboard();
+  setTimeout(adminCheckMissingPointages, 1500);
+}
+
+function changeWeek(d){dashWeekOff+=d;renderDashboard();}
+function changePtgWeek(d){ptgWeekOff+=d;renderPointages();}
+function changePayWeek(d){payWeekOff+=d;renderPaiements();}
+
+function renderDashboard(){
+  document.getElementById('dashWeekLbl').textContent=weekLbl(dashWeekOff);
+  const workers=getWorkers();
+  let totalBoss=0,totalPaid=0,rowsHtml='';
+  workers.forEach((w,i)=>{
+    const days=computeWorkerWeek(i,dashWeekOff);
+    const{sal,days220,days250}=computeSalary(i,days);
+    const extra=w.extraAmount||0;
+    const boss=days.length*250;
+    totalBoss+=boss;totalPaid+=sal+extra;
+    const isSenior=(w.totalDays||0)>=7;
+    rowsHtml+=`<div class="stat-row">
+      <div class="stat-av ${isSenior?'senior':''}">${w.name[0].toUpperCase()}</div>
+      <div class="stat-info">
+        <div class="stat-name">${w.name}</div>
+        <div class="stat-meta">${days.length}j · ${days220?days220+'×$220':''}${days220&&days250?' + ':''}${days250?days250+'×$250':''}${extra?' + $'+extra+' (extra)':''}</div>
+      </div>
+      <div class="stat-right">
+        <div class="stat-val">$${(sal+extra).toLocaleString()}</div>
+        <div class="stat-boss">boss: $${boss}</div>
+      </div>
+    </div>`;
+  });
+  const commission=totalBoss-totalPaid;
+  animateNum('dashCommission',commission);
+  animateNum('dashBoss',totalBoss);
+  animateNum('dashPaid',totalPaid);
+  document.getElementById('dashCommSub').textContent='Boss: $'+totalBoss+' · Laboureurs: $'+totalPaid;
+  document.getElementById('dashWorkerRows').innerHTML=rowsHtml||'<div style="color:var(--text-soft);font-size:13px;padding:16px 0;text-align:center;">Aucun pointage cette semaine</div>';
+}
+
+function toggleNewWorker(){document.getElementById('newWorkerPanel').classList.toggle('open');}
+function addWorker(){
+  const name=document.getElementById('nwName').value.trim();
+  if(!name){showToast('Prénom requis');return;}
+  const workers=getWorkers();
+  if(workers.find(w=>w.name.toLowerCase()===name.toLowerCase())){showToast('Existe déjà');return;}
+  const days=parseInt(document.getElementById('nwDays').value)||0;
+  const cr=parseInt(document.getElementById('nwCustomRate').value)||0;
+  workers.push({name,totalDays:days,customRate:cr||null,extraAmount:0,extraNote:'',paidWeeks:{}});
+  saveWorkers(workers);
+  document.getElementById('nwName').value='';document.getElementById('nwDays').value='';document.getElementById('nwCustomRate').value='';
+  toggleNewWorker();renderWorkers();showToast('✅ '+name+' ajouté !');
+}
+
+function renderWorkers(){
+  const workers=getWorkers();const el=document.getElementById('workerCards');
+  if(!workers.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);font-size:13px;">Aucun laboureur</div>';return;}
+  el.innerHTML=workers.map((w,i)=>{
+    const rate=w.customRate||((w.totalDays||0)>=7?250:220);
+    const isSenior=(w.totalDays||0)>=7;
+    const pct=Math.min((w.totalDays||0)/7*100,100);
+    const days=computeWorkerWeek(i,0);
+    const{sal}=computeSalary(i,days);
+    return`<div class="worker-card">
+      <div class="worker-header">
+        <div class="worker-av ${isSenior?'senior':''}">${w.name[0].toUpperCase()}</div>
+        <div><div class="worker-name">${w.name}</div><div class="worker-meta-sm">${w.totalDays||0} jours total · ${days.length}j cette semaine</div></div>
+        <div class="rate-badge ${isSenior?'senior':'normal'}">$${rate}/j</div>
+      </div>
+      <div class="prog-row"><span class="prog-label">Déblocage $250</span><span class="prog-val">${w.totalDays||0}/7j</span></div>
+      <div class="prog-track"><div class="prog-fill gold" style="width:${pct}%"></div></div>
+      <div class="prog-row"><span class="prog-label">Semaine en cours</span><span class="prog-val">${days.length}/5j · $${sal+(w.extraAmount||0)}</span></div>
+      <div class="prog-track"><div class="prog-fill green" style="width:${Math.min(days.length/5*100,100)}%"></div></div>
+      ${w.extraAmount?`<div style="font-size:11px;color:var(--gold);margin:4px 0 8px;">✨ Extra: +$${w.extraAmount}${w.extraNote?' ('+w.extraNote+')':''}</div>`:''}
+      <div class="btn-row">
+        <button class="btn btn-surface" onclick="openEditWorker(${i})">✏️ Modifier</button>
+        <button class="btn btn-danger" onclick="deleteWorker(${i})">✕ Supprimer</button>
+      </div>
+      <button class="btn btn-gold" onclick="openPinMgmt(${i})" style="margin-top:6px;">🔐 Voir / Reset PIN</button>
+    </div>`;
+  }).join('');
+}
+
+function openEditWorker(idx){
+  editingWorkerIdx=idx;const w=getWorkers()[idx];
+  document.getElementById('editName').value=w.name;
+  document.getElementById('editDays').value=w.totalDays||0;
+  document.getElementById('editCustomRate').value=w.customRate||0;
+  document.getElementById('editExtra').value=w.extraAmount||0;
+  document.getElementById('editExtraNote').value=w.extraNote||'';
+  document.getElementById('editModal').classList.add('open');
+}
+function saveWorkerEdit(){
+  const workers=getWorkers(),w=workers[editingWorkerIdx];
+  w.name=document.getElementById('editName').value.trim()||w.name;
+  w.totalDays=parseInt(document.getElementById('editDays').value)||0;
+  w.customRate=parseInt(document.getElementById('editCustomRate').value)||null;
+  w.extraAmount=parseFloat(document.getElementById('editExtra').value)||0;
+  w.extraNote=document.getElementById('editExtraNote').value.trim();
+  saveWorkers(workers);document.getElementById('editModal').classList.remove('open');renderWorkers();showToast('✅ Modifié !');
+}
+function deleteWorker(idx){
+  if(!confirm('Supprimer '+getWorkers()[idx].name+' ?'))return;
+  const workers=getWorkers();workers.splice(idx,1);saveWorkers(workers);renderWorkers();showToast('Supprimé');
+}
+
+function renderPointages(){
+  document.getElementById('ptgWeekLbl').textContent=weekLbl(ptgWeekOff);
+  const entries=getEntries(),s=getWeekStart(ptgWeekOff),e=getWeekEnd(ptgWeekOff);
+  const week=entries.filter(en=>new Date(en.date)>=s&&new Date(en.date)<=e).sort((a,b)=>b.id-a.id);
+  const el=document.getElementById('ptgList');
+  if(!week.length){el.innerHTML='<div style="color:var(--text-soft);font-size:13px;padding:16px 0;text-align:center;">Aucun pointage</div>';return;}
+  el.innerHTML=week.map(en=>`<div class="entry-row">
+    <div class="entry-dot ${en.type}"></div>
+    <div class="entry-info">
+      <div class="entry-name">${en.workerName}<span class="etype ${en.type}">${en.type==='start'?'Arrivée':'Départ'}</span></div>
+      <div class="entry-meta">${formatDate(en.date)} · ${en.time} · ${en.address}</div>
+      <div class="entry-meta" style="margin-top:1px;">📍 ${en.gps?en.gps.lat+', '+en.gps.lng:'GPS manquant'}</div>
+    </div>
+    ${en.photo?`<img src="${en.photo}" class="entry-thumb" onclick="viewPhoto('${en.photo}')">`:''}
+    <button class="entry-del" onclick="deleteEntry(${en.id})">🗑</button>
+  </div>`).join('');
+}
+function deleteEntry(id){
+  if(!confirm('Supprimer ce pointage ?'))return;
+  saveEntries(getEntries().filter(e=>e.id!==id));renderPointages();showToast('Supprimé');
+}
+function viewPhoto(src){
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  d.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:90dvh;object-fit:contain;border-radius:12px;"><button onclick="this.parentNode.remove()" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.2);border:none;color:white;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;">✕</button>';
+  document.body.appendChild(d);
+}
+
+function renderPaiements(){
+  document.getElementById('payWeekLbl').textContent=weekLbl(payWeekOff);
+  const workers=getWorkers();const el=document.getElementById('payList');
+  if(!workers.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun laboureur</div>';return;}
+  el.innerHTML=workers.map((w,i)=>{
+    const days=computeWorkerWeek(i,payWeekOff);
+    const{sal}=computeSalary(i,days);
+    const total=sal+(w.extraAmount||0);
+    const wl=weekLbl(payWeekOff);
+    const isPaid=w.paidWeeks&&w.paidWeeks[wl];
+    return`<div class="pay-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div class="worker-av" style="width:38px;height:38px;font-size:15px;">${w.name[0].toUpperCase()}</div>
+        <div style="flex:1;"><div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--text-dark);">${w.name}</div>
+        <div style="font-size:11px;color:var(--text-soft);">${days.length} jour(s) · ${weekLbl(payWeekOff)}</div></div>
+        <div class="paid-tag ${isPaid?'yes':'no'}">${isPaid?'✓ Payé':'En attente'}</div>
+      </div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:600;color:${isPaid?'var(--success)':'var(--forest)'};margin-bottom:10px;">$${total.toLocaleString()}</div>
+      ${w.extraAmount?`<div style="font-size:11px;color:var(--gold);margin-bottom:10px;">Inclut extra: $${w.extraAmount}${w.extraNote?' ('+w.extraNote+')':''}</div>`:''}
+      ${isPaid
+        ?`<div style="font-size:11px;color:var(--text-soft);">Payé le ${isPaid.date}</div>${isPaid.photo?`<img src="${isPaid.photo}" style="width:70px;height:46px;object-fit:cover;border-radius:8px;margin-top:8px;cursor:pointer;border:1px solid var(--border);" onclick="viewPhoto('${isPaid.photo}')">`:''}`
+        :`<button class="btn btn-sage" onclick="openPayModal(${i})">💳 Marquer comme payé</button>`
+      }
+    </div>`;
+  }).join('');
+}
+
+function openPayModal(idx){
+  payingWorkerIdx=idx;payPhotoData=null;payWeekOffsetSnap=payWeekOff;
+  const w=getWorkers()[idx];const days=computeWorkerWeek(idx,payWeekOff);
+  const{sal}=computeSalary(idx,days);const total=sal+(w.extraAmount||0);
+  document.getElementById('payModalTitle').textContent='Payer '+w.name;
+  document.getElementById('payModalSub').textContent='Montant : $'+total+' · Photo virement obligatoire';
+  document.getElementById('payPhotoZone').innerHTML='<div class="pz-icon">📱</div><div class="pz-text">Photo du virement bancaire</div>';
+  document.getElementById('payPhotoZone').classList.remove('has');
+  document.getElementById('payPhotoInput').value='';
+  document.getElementById('payModal').classList.add('open');
+}
+function handlePayPhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{payPhotoData=ev.target.result;const z=document.getElementById('payPhotoZone');z.innerHTML='<img src="'+payPhotoData+'" style="width:100%;height:140px;object-fit:cover;">';z.classList.add('has');};r.readAsDataURL(f);}
+function confirmPay(){
+  if(!payPhotoData){showToast('Photo du virement obligatoire');return;}
+  const workers=getWorkers(),w=workers[payingWorkerIdx];
+  if(!w.paidWeeks)w.paidWeeks={};
+  w.paidWeeks[weekLbl(payWeekOffsetSnap)]={date:new Date().toLocaleDateString('fr-FR'),photo:payPhotoData};
+  saveWorkers(workers);document.getElementById('payModal').classList.remove('open');renderPaiements();showToast('✅ Paiement enregistré !');
+}
+
+function copyRecap(){
+  const workers=getWorkers();let txt='RÉCAP '+weekLbl(dashWeekOff)+'\n'+'─'.repeat(32)+'\n';
+  let tb=0,tp=0;
+  workers.forEach((w,i)=>{
+    const days=computeWorkerWeek(i,dashWeekOff);const{sal,days220,days250}=computeSalary(i,days);
+    const extra=w.extraAmount||0;tb+=days.length*250;tp+=sal+extra;
+    txt+=w.name+': '+days.length+'j';
+    if(days220)txt+=' ('+days220+'×$220)';if(days250)txt+=' ('+days250+'×$250)';
+    if(extra)txt+=' + $'+extra+(w.extraNote?' ('+w.extraNote+')':'');
+    txt+=' = $'+(sal+extra)+'\n';
+  });
+  txt+='─'.repeat(32)+'\nBoss: $'+tb+' · Payé: $'+tp+'\nCommission: $'+(tb-tp)+'\n';
+  navigator.clipboard.writeText(txt).then(()=>showToast('📋 Copié !')).catch(()=>showToast('Erreur copie'));
+}
+function exportPDF(){
+  const{jsPDF}=window.jspdf;const workers=getWorkers();
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  let y=20;const m=18;
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(30,50,30);
+  doc.text('Get Your Shift — Récap Semaine',m,y);y+=8;
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(100,100,100);
+  doc.text(weekLbl(dashWeekOff),m,y);y+=10;
+  doc.setDrawColor(200,220,200);doc.line(m,y,210-m,y);y+=8;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(100,100,100);
+  ['NOM','JOURS','TAUX','EXTRA','TOTAL'].forEach((h,i)=>{doc.text(h,[m,70,100,140,165][i],y);});
+  y+=6;doc.line(m,y,210-m,y);y+=7;
+  let tb=0,tp=0;
+  workers.forEach((w,i)=>{
+    const days=computeWorkerWeek(i,dashWeekOff);const{sal,days220,days250}=computeSalary(i,days);
+    const extra=w.extraAmount||0;tb+=days.length*250;tp+=sal+extra;
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);doc.text(w.name,m,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(60,60,60);
+    doc.text(days.length+'j',70,y);
+    let rt='';if(days220)rt+=days220+'×$220 ';if(days250)rt+=days250+'×$250';
+    doc.text(rt.trim()||'—',100,y);doc.text(extra?'$'+extra:'—',140,y);
+    doc.setFont('helvetica','bold');doc.text('$'+(sal+extra),165,y);
+    y+=9;doc.setDrawColor(235,240,235);doc.line(m,y-2,210-m,y-2);
+  });
+  y+=8;
+  doc.setFillColor(240,248,230);doc.roundedRect(m,y,170,38,3,3,'F');y+=10;
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(80,80,80);
+  doc.text('Total boss:',m+6,y);doc.setFont('helvetica','bold');doc.text('$'+tb.toLocaleString(),160,y,{align:'right'});y+=8;
+  doc.setFont('helvetica','normal');doc.text('Total payé:',m+6,y);doc.setFont('helvetica','bold');doc.text('$'+tp.toLocaleString(),160,y,{align:'right'});y+=8;
+  doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(40,90,40);
+  doc.text('COMMISSION:',m+6,y);doc.text('$'+(tb-tp).toLocaleString(),160,y,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(150,150,150);
+  doc.text('Généré le '+new Date().toLocaleDateString('fr-FR')+' · Get Your Shift Admin',m,285);
+  doc.save('recap_'+weekLbl(dashWeekOff).replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');showToast('📄 PDF téléchargé !');
+}
+
+// ── GALLERY ADMIN ──
+let galWeekOff=0, galFilterWorker='all';
+
+function changeGalWeek(d){ galWeekOff+=d; renderAdminGallery(); }
+
+function cleanOldPhotosAdmin(){
+  const entries=getEntries();
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-14);
+  let changed=false;
+  entries.forEach(e=>{ if(e.photo&&new Date(e.date)<cutoff){e.photo=null;changed=true;} });
+  if(changed) saveEntries(entries);
+}
+
+function renderAdminGallery(){
+  cleanOldPhotosAdmin();
+  document.getElementById('galWeekLbl').textContent=weekLbl(galWeekOff);
+  const workers=getWorkers();
+  const entries=getEntries();
+  const s=getWeekStart(galWeekOff), e=getWeekEnd(galWeekOff);
+
+  // Filter pills
+  const pills=document.getElementById('galFilterPills');
+  pills.innerHTML='<div class="filter-pill '+(galFilterWorker==='all'?'active':'')+'" onclick="setGalFilter('all')">Tous</div>'
+    +workers.map((w,i)=>`<div class="filter-pill ${galFilterWorker===i?'active':''}" onclick="setGalFilter(${i})">${w.name}</div>`).join('');
+
+  // Filter entries
+  let week=entries.filter(en=>en.photo&&new Date(en.date)>=s&&new Date(en.date)<=e);
+  if(galFilterWorker!=='all') week=week.filter(en=>en.workerIdx===galFilterWorker);
+  week.sort((a,b)=>b.id-a.id);
+
+  const arrives=week.filter(en=>en.type==='start');
+  const departs=week.filter(en=>en.type==='end');
+
+  function renderGrid(items,containerId){
+    const el=document.getElementById(containerId);
+    if(!items.length){
+      el.innerHTML='<div class="gallery-empty"><div class="gallery-empty-icon">📭</div>Aucune photo</div>';
+      return;
+    }
+    el.innerHTML=items.map(en=>`
+      <div class="gallery-thumb-wrap">
+        <img src="${en.photo}" class="gallery-thumb" onclick="adminViewPhoto('${en.id}')" alt="photo">
+        <div class="gallery-name-badge">${en.workerName}</div>
+        <div class="gallery-date-badge">${formatDate(en.date)} ${en.time}</div>
+      </div>`).join('');
+  }
+
+  renderGrid(arrives,'adminGalArrivee');
+  renderGrid(departs,'adminGalDepart');
+}
+
+function setGalFilter(idx){ galFilterWorker=idx; renderAdminGallery(); }
+
+function adminViewPhoto(entryId){
+  const entry=getEntries().find(e=>String(e.id)===String(entryId)||e.id==entryId);
+  if(!entry||!entry.photo)return;
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+  d.innerHTML=`
+    <img src="${entry.photo}" style="max-width:100%;max-height:72dvh;object-fit:contain;border-radius:12px;">
+    <div style="color:white;font-size:14px;font-weight:600;margin-top:14px;">${entry.workerName}</div>
+    <div style="color:rgba(255,255,255,0.75);font-size:12px;margin-top:4px;">${entry.type==='start'?'🌅 Arrivée':'🌇 Départ'} · ${formatDate(entry.date)} à ${entry.time}</div>
+    <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:3px;">📍 ${entry.gps?entry.gps.lat+', '+entry.gps.lng:'GPS non disponible'}</div>
+    <button onclick="this.parentNode.remove()" style="margin-top:20px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:10px 28px;border-radius:24px;font-size:14px;cursor:pointer;">Fermer</button>`;
+  document.body.appendChild(d);
+}
+
+let pinMgmtIdx=null;
+function openPinMgmt(idx){
+  pinMgmtIdx=idx;
+  const w=getWorkers()[idx];
+  document.getElementById('pinMgmtName').textContent='PIN de '+w.name;
+  document.getElementById('pinMgmtCurrent').textContent=w.pin?w.pin.split('').join(' '):'Pas encore créé';
+  document.getElementById('pinMgmtModal').classList.add('open');
+}
+function resetWorkerPin(){
+  if(!confirm('Réinitialiser le PIN de ce worker ? Il devra en créer un nouveau à sa prochaine connexion.'))return;
+  const workers=getWorkers();
+  delete workers[pinMgmtIdx].pin;
+  saveWorkers(workers);
+  document.getElementById('pinMgmtCurrent').textContent='Réinitialisé';
+  showToast('✅ PIN réinitialisé');
+  setTimeout(()=>document.getElementById('pinMgmtModal').classList.remove('open'),1200);
+}
+// ── FICHES WORKERS ──
+let currentFicheIdx=null, ficheCalOff=0;
+
+function renderFicheSelect(){
+  document.getElementById('ficheContent').style.display='none';
+  document.getElementById('ficheWorkerSelect').style.display='block';
+  const workers=getWorkers();
+  const el=document.getElementById('ficheSelectList');
+  if(!workers.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--text-soft);">Aucun worker</div>';return;}
+  el.innerHTML=workers.map((w,i)=>{
+    const rate=(w.totalDays||0)>=7?250:220;
+    const incidents=(w.incidents||[]).length;
+    return`<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--white);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow);" onclick="openFiche(${i})">
+      <div style="width:42px;height:42px;background:var(--forest);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--cream);">${w.name[0].toUpperCase()}</div>
+      <div style="flex:1;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--text-dark);">${w.name}</div>
+        <div style="font-size:11px;color:var(--text-soft);">${w.totalDays||0} jours · $${rate}/j</div>
+      </div>
+      ${incidents?`<div class="incident-badge">⚠️ ${incidents}</div>`:''}
+      <div style="color:var(--text-soft);font-size:18px;">›</div>
+    </div>`;
+  }).join('');
+}
+
+function openFiche(idx){
+  currentFicheIdx=idx; ficheCalOff=0;
+  document.getElementById('ficheWorkerSelect').style.display='none';
+  document.getElementById('ficheContent').style.display='block';
+  renderFicheContent();
+}
+
+function closeFiche(){
+  document.getElementById('ficheContent').style.display='none';
+  document.getElementById('ficheWorkerSelect').style.display='block';
+  renderFicheSelect();
+}
+
+function renderFicheContent(){
+  const workers=getWorkers();
+  const w=workers[currentFicheIdx];
+  const entries=getEntries().filter(e=>e.workerIdx===currentFicheIdx);
+  const rate=(w.totalDays||0)>=7?250:220;
+  const incidents=w.incidents||[];
+
+  document.getElementById('ficheAvatar').textContent=w.name[0].toUpperCase();
+  document.getElementById('ficheName').textContent=w.name;
+  document.getElementById('ficheRate').textContent='$'+rate+'/j · '+(rate===250?'Taux senior ✓':'Junior — '+(7-(w.totalDays||0))+'j avant $250');
+  document.getElementById('ficheTotalDays').textContent=w.totalDays||0;
+
+  // Total earned
+  let earned=0; const td=w.totalDays||0;
+  for(let i=0;i<td;i++) earned+=(i<7?220:250);
+  earned+=(w.extraAmount||0);
+  document.getElementById('ficheTotalEarned').textContent='$'+earned.toLocaleString();
+
+  // Unique chantiers
+  const addrs=[...new Set(entries.filter(e=>e.address).map(e=>e.address))];
+  document.getElementById('ficheChantiers').textContent=addrs.length;
+
+  // Incident badge
+  const badge=document.getElementById('ficheIncidentBadge');
+  if(incidents.length){badge.style.display='flex';document.getElementById('ficheIncidentCount').textContent=incidents.length;}
+  else badge.style.display='none';
+
+  // Chart — 8 weeks
+  renderFicheChart();
+
+  // Calendar
+  renderFicheCalendar();
+
+  // Chantiers list
+  const countByAddr={};
+  entries.forEach(e=>{if(e.address&&e.type==='start')countByAddr[e.address]=(countByAddr[e.address]||0)+1;});
+  const cl=document.getElementById('ficheChantiersList');
+  if(!addrs.length){cl.innerHTML='<div style="color:var(--text-soft);font-size:12px;text-align:center;padding:12px;">Aucun chantier</div>';}
+  else cl.innerHTML=addrs.map(addr=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--cream2);">
+    <div style="font-size:12px;color:var(--text-dark);flex:1;">${addr}</div>
+    <div style="font-size:11px;color:var(--sage);font-weight:500;">${countByAddr[addr]||1}j</div>
+  </div>`).join('');
+
+  // Notes
+  const notes=DB.get('tp_notes_'+currentFicheIdx,'');
+  document.getElementById('ficheNotes').value=notes;
+
+  // Incidents
+  renderIncidentList();
+}
+
+function renderFicheChart(){
+  const chart=document.getElementById('ficheChart');
+  const labels=document.getElementById('ficheChartLabels');
+  const vals=[];
+  const lbls=[];
+  const maxDays=5;
+  for(let i=-7;i<=0;i++){
+    const days=computeWorkerWeek(currentFicheIdx,i);
+    vals.push(days.length);
+    const s=getWeekStart(i);
+    lbls.push(s.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}));
+  }
+  const maxVal=Math.max(...vals,1);
+  chart.innerHTML=vals.map((v,i)=>`
+    <div class="chart-bar-wrap">
+      <div style="font-size:9px;color:var(--text-soft);text-align:center;">${v?v+'j':''}</div>
+      <div class="chart-bar ${i===7?'current':''}" style="height:${Math.round(v/maxVal*110)+10}px;"></div>
+    </div>`).join('');
+  labels.innerHTML=lbls.map((l,i)=>`<div style="flex:1;text-align:center;font-size:8px;color:${i===7?'var(--forest)':'var(--text-soft)'};font-weight:${i===7?'600':'400'};">${l}</div>`).join('');
+}
+
+function ficheCalMonth(d){ ficheCalOff+=d; renderFicheCalendar(); }
+
+function renderFicheCalendar(){
+  const now=new Date();
+  const target=new Date(now.getFullYear(),now.getMonth()+ficheCalOff,1);
+  document.getElementById('ficheCalLabel').textContent=target.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const entries=getEntries().filter(e=>e.workerIdx===currentFicheIdx);
+  const workedDates=new Set(entries.map(e=>e.date));
+  const firstDay=(target.getDay()+6)%7;
+  const daysInMonth=new Date(target.getFullYear(),target.getMonth()+1,0).getDate();
+  const todayStr=new Date().toISOString().split('T')[0];
+  // Day headers
+  const dayNames=['L','M','M','J','V','S','D'];
+  let html=dayNames.map(d=>`<div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">${d}</div>`).join('');
+  html+='<div style="grid-column:1/-1;height:0;"></div>'; // break
+  for(let i=0;i<firstDay;i++) html+='<div class="cal-day empty">.</div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isToday=ds===todayStr, isWorked=workedDates.has(ds);
+    let cls='cal-day normal';
+    if(isToday&&isWorked)cls='cal-day worked';
+    else if(isToday)cls='cal-day today';
+    else if(isWorked)cls='cal-day worked';
+    html+=`<div class="${cls}">${d}</div>`;
+  }
+  // Rebuild with proper headers
+  const grid=document.getElementById('ficheCalGrid');
+  // Clear and use a wrapper
+  grid.style.display='grid';
+  grid.style.gridTemplateColumns='repeat(7,1fr)';
+  grid.style.gap='3px';
+  // insert headers manually above grid
+  const headerRow=grid.previousElementSibling;
+  if(headerRow&&headerRow.style&&headerRow.style.display==='grid') headerRow.remove();
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;';
+  hdr.innerHTML=dayNames.map(d=>`<div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">${d}</div>`).join('');
+  grid.parentNode.insertBefore(hdr,grid);
+  let cellHtml='';
+  for(let i=0;i<firstDay;i++) cellHtml+='<div class="cal-day" style="color:transparent;">.</div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isToday=ds===todayStr,isWorked=workedDates.has(ds);
+    let bg='transparent',color='var(--text-soft)',fw='400';
+    if(isToday&&isWorked){bg='var(--forest)';color='var(--cream)';fw='600';}
+    else if(isToday){bg='var(--sage-light)';color='var(--forest)';fw='600';}
+    else if(isWorked){bg='var(--forest)';color='var(--cream)';fw='500';}
+    cellHtml+=`<div style="text-align:center;padding:5px 2px;background:${bg};color:${color};font-weight:${fw};border-radius:6px;font-size:11px;">${d}</div>`;
+  }
+  grid.innerHTML=cellHtml;
+}
+
+function saveFicheNotes(){
+  const notes=document.getElementById('ficheNotes').value;
+  DB.set('tp_notes_'+currentFicheIdx, notes);
+}
+
+function renderIncidentList(){
+  const workers=getWorkers();
+  const incidents=(workers[currentFicheIdx].incidents||[]);
+  const el=document.getElementById('ficheIncidentList');
+  if(!incidents.length){el.innerHTML='<div style="color:var(--text-soft);font-size:12px;text-align:center;padding:10px;">Aucun incident</div>';return;}
+  el.innerHTML=incidents.map((inc,i)=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:10px 0;border-bottom:1px solid var(--cream2);">
+    <div style="font-size:16px;flex-shrink:0;">⚠️</div>
+    <div style="flex:1;">
+      <div style="font-size:12px;color:var(--text-dark);">${inc.text}</div>
+      <div style="font-size:10px;color:var(--text-soft);margin-top:2px;">${inc.date}</div>
+    </div>
+    <button onclick="deleteIncident(${i})" style="background:none;border:none;color:var(--danger);font-size:14px;cursor:pointer;padding:2px;">🗑</button>
+  </div>`).join('');
+}
+
+function addFicheIncident(){
+  const txt=document.getElementById('ficheIncidentInput').value.trim();
+  if(!txt){showToast('Décris l\'incident');return;}
+  const workers=getWorkers();
+  if(!workers[currentFicheIdx].incidents) workers[currentFicheIdx].incidents=[];
+  workers[currentFicheIdx].incidents.push({text:txt,date:new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})});
+  saveWorkers(workers);
+  document.getElementById('ficheIncidentInput').value='';
+  renderIncidentList();
+  // Update badge
+  const badge=document.getElementById('ficheIncidentBadge');
+  badge.style.display='flex';
+  document.getElementById('ficheIncidentCount').textContent=workers[currentFicheIdx].incidents.length;
+  showToast('⚠️ Incident signalé');
+}
+
+function deleteIncident(incIdx){
+  if(!confirm('Supprimer cet incident ?'))return;
+  const workers=getWorkers();
+  workers[currentFicheIdx].incidents.splice(incIdx,1);
+  saveWorkers(workers);
+  renderIncidentList();
+  const count=workers[currentFicheIdx].incidents.length;
+  const badge=document.getElementById('ficheIncidentBadge');
+  if(count) document.getElementById('ficheIncidentCount').textContent=count;
+  else badge.style.display='none';
+}
+
+// ── ADMIN NOTIFICATION CHECK ──
+function adminCheckMissingPointages(){
+  const workers=getWorkers();
+  const today=new Date().toISOString().split('T')[0];
+  const entries=getEntries();
+  const hour=new Date().getHours();
+  if(hour<8) return;
+  const missing=workers.filter((w,i)=>{
+    return !entries.find(e=>e.workerIdx===i&&e.date===today&&e.type==='start');
+  }).map(w=>w.name);
+  if(missing.length){
+    showToast('⚠️ Pas encore pointé: '+missing.join(', '));
+  }
+}
+
+function animateNum(id,target){const el=document.getElementById(id);const start=parseInt((el.textContent||'0').replace(/\D/g,''))||0;const dur=700;const t0=performance.now();const tick=now=>{const p=Math.min((now-t0)/dur,1);const ease=1-Math.pow(1-p,3);el.textContent=Math.round(start+(target-start)*ease).toLocaleString();if(p<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+document.getElementById('payModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+document.getElementById('editModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+
+// ── PIN LISTENERS — attached once DOM is ready ──
+(function(){
+  var inp = document.getElementById('pinInput');
+  var btn = document.getElementById('pinValider');
+
+  if(inp){
+    inp.addEventListener('input', function(){ updateDots(); });
+    inp.addEventListener('keydown', function(e){ if(e.keyCode===13){ e.preventDefault(); doCheckPin(); } });
+  }
+
+  if(btn){
+    // Use both click and touchend — touchend fires first on iOS
+    btn.addEventListener('touchend', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      doCheckPin();
+    });
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      doCheckPin();
+    });
+  }
+})();
+</script>
+</body>
+</html>.header-logo span { color:var(--sage-light); }
+.admin-tag { background:rgba(168,197,160,0.2); border:1px solid rgba(168,197,160,0.35); color:var(--sage-light); padding:3px 10px; border-radius:20px; font-size:10px; letter-spacing:1px; text-transform:uppercase; font-weight:500; }
+.header-date { font-size:12px; color:rgba(244,241,235,0.55); margin-top:6px; position:relative; z-index:1; }
+.lock-btn { background:none; border:none; color:rgba(244,241,235,0.45); font-size:11px; cursor:pointer; font-family:'DM Sans',sans-serif; letter-spacing:0.5px; text-transform:uppercase; margin-top:4px; display:block; }
+
+/* TABS TOP */
+.tab-bar-top { display:flex; background:var(--white); border-bottom:1px solid var(--border); overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; position:sticky; top:0; z-index:90; box-shadow:0 2px 8px rgba(45,74,45,0.06); }
+.tab-bar-top::-webkit-scrollbar { display:none; }
+.tbt { flex-shrink:0; padding:13px 16px; font-size:10px; letter-spacing:1.2px; text-transform:uppercase; font-weight:500; color:var(--text-soft); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; transition:all 0.2s; }
+.tbt.active { color:var(--forest); border-bottom-color:var(--forest); }
+
+/* CARDS */
+.card { background:var(--white); border-radius:var(--radius); padding:18px; margin-bottom:10px; box-shadow:var(--shadow); border:1px solid var(--border); }
+.card-title { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-soft); margin-bottom:14px; font-weight:500; }
+
+/* BENTO */
+.bento2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.bcard { border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
+.bcard.dark { background:var(--forest); }
+.bcard.light { background:#e8f0e8; border:1px solid rgba(45,74,45,0.12); }
+.bcard.gold-card { background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.2); }
+.blabel { font-size:9px; letter-spacing:2px; text-transform:uppercase; font-weight:500; margin-bottom:6px; }
+.bcard.dark .blabel { color:rgba(244,241,235,0.5); }
+.bcard.light .blabel { color:var(--forest-light); }
+.bcard.gold-card .blabel { color:var(--gold); }
+.bval { font-family:'Cormorant Garamond',serif; font-size:36px; font-weight:600; line-height:1; letter-spacing:-1px; }
+.bcard.dark .bval { color:var(--cream); }
+.bcard.light .bval { color:var(--forest); }
+.bcard.gold-card .bval { color:var(--gold); }
+.bunit { font-family:'DM Sans',sans-serif; font-size:13px; opacity:0.6; }
+
+/* COMMISSION BLOCK */
+.commission-block { background:var(--forest); border-radius:var(--radius); padding:22px 20px; margin-bottom:10px; position:relative; overflow:hidden; box-shadow:0 8px 32px rgba(45,74,45,0.2); }
+.commission-block::after { content:''; position:absolute; width:180px; height:180px; background:radial-gradient(circle,rgba(168,197,160,0.2) 0%,transparent 70%); top:-60px; right:-40px; pointer-events:none; }
+.comm-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:rgba(244,241,235,0.5); margin-bottom:6px; }
+.comm-val { font-family:'Cormorant Garamond',serif; font-size:52px; font-weight:600; color:var(--cream); line-height:1; letter-spacing:-2px; position:relative; z-index:1; }
+.comm-dollar { font-size:22px; opacity:0.65; vertical-align:super; }
+.comm-sub { font-size:12px; color:rgba(244,241,235,0.55); margin-top:8px; position:relative; z-index:1; }
+
+/* STAT ROWS */
+.stat-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--cream2); }
+.stat-row:last-child { border-bottom:none; }
+.stat-av { width:34px; height:34px; border-radius:50%; background:var(--forest); display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:600; color:var(--cream); flex-shrink:0; }
+.stat-av.senior { box-shadow:0 0 0 2px var(--gold); }
+.stat-info { flex:1; }
+.stat-name { font-size:13px; font-weight:500; color:var(--text-dark); }
+.stat-meta { font-size:11px; color:var(--text-soft); margin-top:1px; }
+.stat-right { text-align:right; }
+.stat-val { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:600; color:var(--forest); }
+.stat-boss { font-size:10px; color:var(--text-soft); margin-top:1px; }
+
+/* INPUTS */
+.inp-label { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text-soft); margin-bottom:5px; display:block; }
+.inp { width:100%; background:var(--cream2); border:1.5px solid var(--border); border-radius:11px; padding:11px 13px; color:var(--text-dark); font-family:'DM Sans',sans-serif; font-size:14px; outline:none; -webkit-appearance:none; margin-bottom:8px; }
+.inp:focus { border-color:var(--sage); }
+.inp-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+/* BUTTONS */
+.btn { display:flex; align-items:center; justify-content:center; gap:6px; padding:12px 16px; border-radius:11px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; border:none; transition:all 0.15s; width:100%; }
+.btn:active { transform:scale(0.97); }
+.btn-forest { background:var(--forest); color:var(--cream); }
+.btn-sage { background:var(--sage); color:var(--white); }
+.btn-surface { background:var(--cream2); color:var(--text-dark); border:1px solid var(--border); }
+.btn-danger { background:rgba(200,60,60,0.1); color:var(--danger); border:1px solid rgba(200,60,60,0.2); }
+.btn-gold { background:rgba(201,168,76,0.12); color:var(--gold); border:1px solid rgba(201,168,76,0.25); }
+.btn-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+
+/* WORKER CARDS */
+.worker-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:10px; box-shadow:var(--shadow); }
+.worker-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.worker-av { width:44px; height:44px; border-radius:50%; background:var(--forest); display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:600; color:var(--cream); flex-shrink:0; }
+.worker-av.senior { box-shadow:0 0 0 2.5px var(--gold); }
+.worker-name { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:600; color:var(--text-dark); }
+.worker-meta-sm { font-size:11px; color:var(--text-soft); margin-top:1px; }
+.rate-badge { margin-left:auto; padding:4px 11px; border-radius:20px; font-size:12px; font-weight:600; }
+.rate-badge.normal { background:rgba(45,74,45,0.08); color:var(--forest); border:1px solid var(--border); }
+.rate-badge.senior { background:rgba(201,168,76,0.12); color:var(--gold); border:1px solid rgba(201,168,76,0.25); }
+
+/* PROGRESS */
+.prog-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.prog-label { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text-soft); }
+.prog-val { font-size:11px; color:var(--text-mid); font-weight:500; }
+.prog-track { height:5px; background:var(--cream2); border-radius:99px; overflow:hidden; margin-bottom:10px; }
+.prog-fill { height:100%; border-radius:99px; transition:width 1s cubic-bezier(0.16,1,0.3,1); }
+.prog-fill.green { background:linear-gradient(90deg,var(--sage),var(--forest)); }
+.prog-fill.gold { background:linear-gradient(90deg,#c9a84c,#e8c86a); }
+
+/* ENTRY ROWS */
+.entry-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--cream2); }
+.entry-row:last-child { border-bottom:none; }
+.entry-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.entry-dot.start { background:var(--sage); }
+.entry-dot.end { background:var(--forest); }
+.entry-info { flex:1; }
+.entry-name { font-size:12px; font-weight:500; color:var(--text-dark); }
+.entry-meta { font-size:10px; color:var(--text-soft); margin-top:1px; }
+.etype { font-size:9px; padding:2px 6px; border-radius:4px; font-weight:500; margin-left:4px; }
+.etype.start { background:rgba(122,158,122,0.15); color:var(--sage); }
+.etype.end { background:rgba(45,74,45,0.1); color:var(--forest); }
+.entry-thumb { width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border); cursor:pointer; }
+.entry-del { background:none; border:none; color:var(--danger); font-size:15px; cursor:pointer; padding:4px; }
+
+/* WEEK NAV */
+.week-nav { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.wnav-btn { background:var(--white); border:1px solid var(--border); color:var(--text-dark); width:36px; height:36px; border-radius:9px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); }
+.wnav-label { flex:1; text-align:center; font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:600; color:var(--text-dark); }
+
+/* PAY CARDS */
+.pay-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:10px; box-shadow:var(--shadow); }
+.paid-tag { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:500; }
+.paid-tag.yes { background:rgba(58,170,106,0.1); color:var(--success); border:1px solid rgba(58,170,106,0.25); }
+.paid-tag.no { background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.2); }
+
+/* MODALS */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(26,42,26,0.75); backdrop-filter:blur(4px); z-index:300; align-items:flex-end; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-sheet { background:var(--cream); border-radius:24px 24px 0 0; padding:24px 20px 40px; width:100%; max-width:480px; animation:slideUp 0.3s cubic-bezier(0.16,1,0.3,1); }
+@keyframes slideUp { from{transform:translateY(100%);}to{transform:translateY(0);} }
+.modal-handle { width:40px; height:4px; background:var(--cream2); border-radius:99px; margin:0 auto 20px; }
+.modal-title { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:600; color:var(--text-dark); margin-bottom:4px; }
+.modal-sub { font-size:12px; color:var(--text-soft); margin-bottom:20px; }
+.photo-zone { background:var(--white); border:2px dashed var(--border); border-radius:14px; min-height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; margin-bottom:12px; overflow:hidden; }
+.photo-zone.has { border-style:solid; border-color:var(--sage); }
+.pz-icon { font-size:28px; }
+.pz-text { font-size:12px; color:var(--text-soft); }
+
+/* EXPAND PANEL */
+.expand-panel { display:none; background:var(--cream2); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; }
+.expand-panel.open { display:block; }
+
+/* TAB CONTENT */
+.tcontent { display:none; padding:14px 14px 60px; }
+.tcontent.active { display:block; }
+
+/* TOAST */
+.toast { position:fixed; bottom:60px; left:50%; transform:translateX(-50%) translateY(16px); background:var(--forest); color:var(--cream); padding:10px 18px; border-radius:24px; font-size:13px; opacity:0; transition:all 0.3s; z-index:999; white-space:nowrap; box-shadow:0 4px 16px rgba(45,74,45,0.3); }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* GALLERY ADMIN */
+.gallery-section{margin-bottom:18px;}
+.gallery-section-title{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);font-weight:500;margin-bottom:10px;}
+.gtag{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;}
+.gtag.arrive{background:rgba(122,158,122,0.15);color:var(--sage);}
+.gtag.depart{background:rgba(45,74,45,0.12);color:var(--forest);}
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.gallery-thumb{aspect-ratio:1;border-radius:10px;object-fit:cover;border:1px solid var(--border);cursor:pointer;transition:transform 0.15s;width:100%;}
+.gallery-thumb:active{transform:scale(0.95);}
+.gallery-thumb-wrap{position:relative;}
+.gallery-date-badge{position:absolute;bottom:4px;left:4px;right:4px;background:rgba(26,42,26,0.75);color:white;font-size:9px;border-radius:5px;padding:2px 5px;text-align:center;}
+.gallery-name-badge{position:absolute;top:4px;left:4px;right:4px;background:rgba(45,74,45,0.8);color:var(--cream);font-size:9px;border-radius:5px;padding:2px 5px;text-align:center;font-weight:600;}
+.gallery-empty{text-align:center;padding:24px 12px;color:var(--text-soft);font-size:12px;grid-column:1/-1;}
+.gallery-empty-icon{font-size:32px;margin-bottom:8px;}
+/* Worker filter pills */
+.filter-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.filter-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--cream2);color:var(--text-mid);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+.filter-pill.active{background:var(--forest);color:var(--cream);border-color:var(--forest);}
+
+
+/* FICHE WORKER */
+.fiche-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.fiche-stat{background:var(--cream2);border-radius:12px;padding:12px;text-align:center;}
+.fiche-stat-val{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--forest);}
+.fiche-stat-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-top:2px;}
+/* CHART */
+.chart-wrap{height:140px;display:flex;align-items:flex-end;gap:6px;padding:0 4px;margin-bottom:6px;}
+.chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.chart-bar{width:100%;border-radius:6px 6px 0 0;background:var(--sage);transition:height 0.8s cubic-bezier(0.16,1,0.3,1);min-height:2px;}
+.chart-bar.current{background:var(--forest);}
+.chart-label{font-size:9px;color:var(--text-soft);text-align:center;}
+.chart-val{font-size:9px;color:var(--text-mid);font-weight:500;}
+/* INCIDENT BADGE */
+.incident-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(200,60,60,0.1);border:1px solid rgba(200,60,60,0.2);color:#c83c3c;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:500;}
+/* NOTE TEXTAREA */
+.note-area{width:100%;background:var(--cream2);border:1.5px solid var(--border);border-radius:12px;padding:12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text-dark);outline:none;resize:vertical;min-height:90px;line-height:1.5;}
+.note-area:focus{border-color:var(--sage);}
+/* ADMIN CAL */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day{text-align:center;padding:5px 2px;border-radius:6px;font-size:11px;}
+.cal-day.worked{background:var(--forest);color:var(--cream);font-weight:500;}
+.cal-day.today{background:var(--sage-light);color:var(--forest);font-weight:600;}
+.cal-day.empty{color:transparent;}
+.cal-day.normal{color:var(--text-soft);}
+
+</style>
+</head>
+<body>
+
+<!-- ── PIN SCREEN ── -->
+<div id="pinScreen">
+  <div class="pin-logo">Get Your <span>Shift</span></div>
+  <div class="pin-subtitle">Administration</div>
+  <div class="pin-card">
+    <div class="pin-card-title">Accès admin 🔐</div>
+    <div class="pin-card-sub">Entre ton code puis appuie sur Valider</div>
+    <div style="display:flex;gap:16px;justify-content:center;margin-bottom:20px;padding:12px 0;">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <input
+      id="pinInput"
+      type="number"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      min="0"
+      max="9999"
+      autocomplete="off"
+      placeholder="••••"
+      style="
+        display:block;
+        width:100%;
+        text-align:center;
+        font-size:40px;
+        padding:14px 8px;
+        border:2px solid rgba(45,74,45,0.2);
+        border-radius:14px;
+        background:var(--cream2);
+        color:var(--forest);
+        font-family:'Cormorant Garamond',serif;
+        font-weight:700;
+        outline:none;
+        -webkit-appearance:none;
+        appearance:none;
+        margin-bottom:14px;
+        box-sizing:border-box;
+      "
+    >
     <div id="pinValider" style="
       width:100%;
       background:var(--forest);
