@@ -266,7 +266,7 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
     </div>
     <input
       id="pinInput"
-      type="tel"
+      type="text"
       inputmode="numeric"
       pattern="[0-9]*"
       maxlength="4"
@@ -296,7 +296,7 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
         caret-color:var(--forest);
       "
     >
-    <button onclick="submitPin()" style="
+    <button onclick="submitPin()" ontouchend="this.onclick()" style="
       width:100%;
       background:var(--forest);
       color:var(--cream);
@@ -309,6 +309,7 @@ body { padding-bottom:env(safe-area-inset-bottom,24px); }
       cursor:pointer;
       margin-bottom:12px;
       touch-action:manipulation;
+      -webkit-appearance:none;
     ">Valider →</button>
     <div class="pin-error" id="pinError">Code incorrect — réessaie</div>
     <div class="pin-hint">Code par défaut : 1234</div>
@@ -597,11 +598,26 @@ function handlePinInput(val){
 }
 
 function submitPin(){
-  var val=document.getElementById('pinInput').value;
-  var digits=val.replace(/\D/g,'').slice(0,4);
+  var inp=document.getElementById('pinInput');
+  var raw=inp.value||'';
+  // Strip everything except digits
+  var digits=raw.replace(/[^0-9]/g,'').slice(0,4);
+  // Also try innerText as fallback
+  if(digits.length===0 && inp.innerText) digits=inp.innerText.replace(/[^0-9]/g,'').slice(0,4);
+  if(digits.length===0){
+    // Last resort: read from dots
+    var filled=0;
+    for(var i=0;i<4;i++){var el=document.getElementById('pd'+i);if(el&&el.classList.contains('filled'))filled++;}
+    if(filled>0){
+      document.getElementById('pinError').textContent='Recopie ton code et réessaie';
+      document.getElementById('pinError').classList.add('show');
+      setTimeout(function(){document.getElementById('pinError').classList.remove('show');},2000);
+      return;
+    }
+  }
   if(digits.length<4){
+    document.getElementById('pinError').textContent='Entre les 4 chiffres complets';
     document.getElementById('pinError').classList.add('show');
-    document.getElementById('pinError').textContent='Entre 4 chiffres';
     setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1500);
     return;
   }
