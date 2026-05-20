@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test</title>
+<style>
+body { font-family:sans-serif; padding:30px; background:#f0f0f0; }
+.btn {
+  display:block; width:100%; padding:20px;
+  margin:10px 0; border-radius:12px;
+  font-size:18px; font-weight:bold;
+  text-align:center; cursor:pointer;
+  text-decoration:none;
+}
+.b1 { background:#2d4a2d; color:white; border:none; }
+.b2 { background:#4a7a4a; color:white; }
+.b3 { background:#6a9a6a; color:white; border:none; font-family:sans-serif; font-size:18px; font-weight:bold; }
+#result {
+  margin-top:20px; padding:16px;
+  background:white; border-radius:12px;
+  font-size:16px; min-height:50px;
+  border:2px solid #ccc;
+}
+</style>
+</head>
+<body>
+
+<h2>Test tap Safari</h2>
+<p>Appuie sur chaque bouton et note lequel répond :</p>
+
+<!-- Test 1: button avec onclick -->
+<button class="btn b1" onclick="log('BUTTON onclick marche ✅')">
+  1. button onclick
+</button>
+
+<!-- Test 2: a href javascript -->
+<a href="javascript:log('A href marche ✅')" class="btn b2">
+  2. a href javascript
+</a>
+
+<!-- Test 3: input type=button -->
+<input type="button" class="btn b3" value="3. input type=button" onclick="log('INPUT button marche ✅')">
+
+<!-- Test 4: form submit -->
+<form onsubmit="log('FORM submit marche ✅'); return false;">
+  <input type="submit" class="btn b1" value="4. form submit" style="display:block;width:100%;padding:20px;margin:10px 0;border-radius:12px;font-size:18px;font-weight:bold;text-align:center;background:#2d4a2d;color:white;border:none;">
+</form>
+
+<div id="result">En attente d'un tap…</div>
+
+<script>
+function log(msg) {
+  document.getElementById('result').innerHTML += msg + '<br>';
+}
+</script>
+
+</body>
+</html>
