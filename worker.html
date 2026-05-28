@@ -5,389 +5,389 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Mon Chantier">
-<title>Mon Chantier</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<meta name="apple-mobile-web-app-title" content="Get Your Shift">
+<title>Get Your Shift</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --cream:#f4f1eb;--cream2:#ede9e0;--forest:#2d4a2d;--forest-light:#3d6b3d;
-  --sage:#7a9e7a;--sage-light:#a8c5a0;--slate:#4a5568;--mist:#e8edf0;
-  --white:#ffffff;--gold:#c9a84c;--text-dark:#1a2a1a;--text-mid:#4a5a4a;
-  --text-soft:#8a9a8a;--border:rgba(45,74,45,0.12);--shadow:0 4px 24px rgba(45,74,45,0.08);--radius:20px;
+  --cream:#f4f1eb; --cream2:#ede9e0; --forest:#2d4a2d; --forest-light:#3d6b3d;
+  --sage:#7a9e7a; --sage-light:#a8c5a0; --white:#fff; --gold:#c9a84c;
+  --text-dark:#1a2a1a; --text-mid:#4a5a4a; --text-soft:#8a9a8a;
+  --border:rgba(45,74,45,0.12); --shadow:0 4px 24px rgba(45,74,45,0.08);
+  --radius:20px; --danger:#c83c3c; --success:#3aaa6a;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--text-dark);overscroll-behavior:none;}
-body{padding-bottom:env(safe-area-inset-bottom,24px);}
-.screen{display:none;min-height:100dvh;flex-direction:column;}
-.screen.active{display:flex;}
+html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--text-dark);min-height:100dvh;overscroll-behavior:none;}
 
-/* LOGIN */
-#screen-login{background:var(--forest);align-items:center;justify-content:center;padding:32px 24px;position:relative;overflow:hidden;}
-#screen-login::before{content:'';position:absolute;width:400px;height:400px;background:radial-gradient(circle,rgba(122,158,122,0.3) 0%,transparent 70%);top:-100px;right:-100px;pointer-events:none;}
-#screen-login::after{content:'';position:absolute;width:300px;height:300px;background:radial-gradient(circle,rgba(168,197,160,0.15) 0%,transparent 70%);bottom:0;left:-50px;pointer-events:none;}
-.login-logo{text-align:center;margin-bottom:48px;position:relative;z-index:1;}
-.login-logo-text{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:600;color:var(--cream);}
-.login-logo-text span{color:var(--sage-light);}
-.login-subtitle{font-size:13px;color:rgba(244,241,235,0.5);margin-top:4px;letter-spacing:2px;text-transform:uppercase;}
-.login-card{background:var(--cream);border-radius:24px;padding:28px 24px;width:100%;max-width:360px;position:relative;z-index:1;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
-.login-card h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--text-dark);margin-bottom:6px;}
-.login-card p{font-size:13px;color:var(--text-soft);margin-bottom:20px;}
-.worker-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
-.worker-btn{background:var(--cream2);border:2px solid transparent;border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
-.worker-btn:active{transform:scale(0.96);}
+/* ── LOADING ── */
+#loadingScreen{position:fixed;inset:0;background:var(--forest);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;}
+.load-logo{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:600;color:var(--cream);margin-bottom:8px;}
+.load-logo span{color:var(--sage-light);}
+.load-sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(244,241,235,0.45);margin-bottom:32px;}
+.load-spinner{width:32px;height:32px;border:3px solid rgba(168,197,160,0.3);border-top-color:var(--sage-light);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── PIN SCREEN ── */
+#pinScreen{display:none;min-height:100dvh;background:var(--forest);flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;}
+.pin-logo{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:600;color:var(--cream);text-align:center;}
+.pin-logo span{color:var(--sage-light);}
+.pin-subtitle{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(244,241,235,0.45);margin-top:4px;text-align:center;margin-bottom:36px;}
+.pin-card{background:var(--cream);border-radius:24px;padding:26px 22px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.pin-card-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text-dark);margin-bottom:4px;}
+.pin-card-sub{font-size:12px;color:var(--text-soft);margin-bottom:16px;}
+
+/* Worker grid */
+.worker-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.worker-btn{background:var(--cream2);border:2px solid transparent;border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;transition:border-color 0.2s;}
 .worker-btn.selected{border-color:var(--forest);background:rgba(45,74,45,0.06);}
-.worker-avatar{width:44px;height:44px;background:var(--forest);border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--cream);}
-.worker-btn-name{font-size:13px;font-weight:500;color:var(--text-dark);}
-.worker-btn-rate{font-size:11px;color:var(--sage);margin-top:2px;}
-.btn-login{width:100%;background:var(--forest);color:var(--cream);border:none;border-radius:14px;padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-.btn-login:active{opacity:0.85;transform:scale(0.98);}
+.worker-avatar{width:42px;height:42px;background:var(--forest);border-radius:50%;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--cream);}
+.worker-name-sm{font-size:13px;font-weight:500;color:var(--text-dark);}
+.worker-rate-sm{font-size:11px;color:var(--sage);margin-top:2px;}
 
-/* APP HEADER */
-#screen-app{background:var(--cream);overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.app-header{background:var(--forest);padding:20px 20px 28px;position:relative;overflow:hidden;}
-.app-header::after{content:'';position:absolute;width:200px;height:200px;background:radial-gradient(circle,rgba(168,197,160,0.2) 0%,transparent 70%);top:-60px;right:-40px;}
+/* PIN dots */
+.pw-dots{display:flex;gap:14px;justify-content:center;margin-bottom:20px;padding:10px 0;}
+.pw-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(45,74,45,0.2);background:transparent;transition:all 0.2s;}
+.pw-dot.filled{background:var(--forest);border-color:var(--forest);}
+
+/* Step system */
+.pin-step{display:none;}
+.pin-step.active{display:block;}
+
+.pin-input{
+  display:block;width:100%;text-align:center;font-size:38px;
+  padding:14px 8px;border:2px solid rgba(45,74,45,0.2);border-radius:14px;
+  background:var(--cream2);color:var(--forest);
+  font-family:'Cormorant Garamond',serif;font-weight:700;
+  outline:none;-webkit-appearance:none;appearance:none;
+  margin-bottom:12px;box-sizing:border-box;
+}
+.pw-btn{
+  width:100%;background:var(--forest);color:var(--cream);border:none;
+  border-radius:13px;padding:15px;font-family:'Cormorant Garamond',serif;
+  font-size:18px;font-weight:600;cursor:pointer;display:block;
+  text-align:center;margin-bottom:8px;
+}
+.pw-btn-light{background:var(--cream2);color:var(--text-dark);font-size:14px;padding:11px;}
+.pin-error{text-align:center;color:var(--danger);font-size:12px;margin-top:8px;min-height:18px;opacity:0;transition:opacity 0.3s;}
+.pin-error.show{opacity:1;}
+
+/* ── APP ── */
+#appScreen{display:none;flex-direction:column;min-height:100dvh;}
+
+/* Header */
+.app-header{background:var(--forest);padding:20px 20px 24px;position:relative;overflow:hidden;}
+.app-header::after{content:'';position:absolute;width:200px;height:200px;background:radial-gradient(circle,rgba(168,197,160,0.2) 0%,transparent 70%);top:-60px;right:-40px;pointer-events:none;}
 .header-top{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1;}
 .header-logo{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--cream);}
 .header-logo span{color:var(--sage-light);}
-.header-date{text-align:right;}
+.header-right{text-align:right;}
 .header-date-day{font-size:11px;color:rgba(244,241,235,0.6);letter-spacing:1px;text-transform:uppercase;}
-.header-date-full{font-size:13px;color:var(--cream);font-weight:500;}
-.logout-btn{background:none;border:none;color:rgba(244,241,235,0.5);font-size:11px;cursor:pointer;letter-spacing:0.5px;text-transform:uppercase;margin-top:4px;font-family:'DM Sans',sans-serif;}
-.header-worker-name{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;color:var(--cream);margin-top:16px;position:relative;z-index:1;letter-spacing:-0.5px;}
-.header-worker-sub{font-size:12px;color:rgba(244,241,235,0.55);margin-top:2px;position:relative;z-index:1;letter-spacing:0.5px;}
+.header-date-full{font-size:12px;color:var(--cream);font-weight:500;}
+.logout-btn{background:none;border:none;color:rgba(244,241,235,0.5);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;display:block;}
+.header-worker-name{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--cream);margin-top:14px;position:relative;z-index:1;letter-spacing:-0.5px;}
+.header-worker-sub{font-size:12px;color:rgba(244,241,235,0.55);margin-top:2px;position:relative;z-index:1;}
 
-/* CARDS */
-.card{background:var(--white);border-radius:var(--radius);padding:20px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);}
-.card-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-soft);margin-bottom:12px;font-weight:500;}
-
-/* BENTO */
-.bento-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.bento-card{border-radius:var(--radius);padding:18px 16px;position:relative;overflow:hidden;box-shadow:var(--shadow);}
-.bento-card.dark{background:var(--forest);}
-.bento-card.light{background:#e8f0e8;border:1px solid rgba(45,74,45,0.12);}
-.bento-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:500;margin-bottom:6px;}
-.bento-card.dark .bento-label{color:rgba(244,241,235,0.5);}
-.bento-card.light .bento-label{color:var(--forest-light);}
-.bento-value{font-family:'Cormorant Garamond',serif;font-weight:600;line-height:1;letter-spacing:-1px;}
-.bento-card.dark .bento-value{color:var(--cream);font-size:42px;}
-.bento-card.light .bento-value{color:var(--forest);font-size:28px;}
-.bento-unit{font-family:'DM Sans',sans-serif;font-size:14px;font-weight:400;opacity:0.7;}
-.progress-wrap{margin-top:10px;}
-.progress-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
-.progress-info-label{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;}
-.bento-card.dark .progress-info-label{color:rgba(244,241,235,0.5);}
-.progress-info-val{font-size:11px;font-weight:500;}
-.bento-card.dark .progress-info-val{color:var(--sage-light);}
-.progress-track{height:5px;border-radius:99px;overflow:hidden;}
-.bento-card.dark .progress-track{background:rgba(255,255,255,0.12);}
-.bento-card.light .progress-track{background:rgba(45,74,45,0.15);}
-.progress-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(0.16,1,0.3,1);}
-.bento-card.dark .progress-fill{background:linear-gradient(90deg,var(--sage),var(--sage-light));}
-.bento-card.light .progress-fill{background:var(--forest);}
-
-/* SALARY */
-.salary-card{background:var(--forest);border-radius:var(--radius);padding:22px 20px;margin-bottom:12px;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(45,74,45,0.25);}
-.salary-card::after{content:'';position:absolute;width:180px;height:180px;background:radial-gradient(circle,rgba(168,197,160,0.2) 0%,transparent 70%);top:-60px;right:-40px;pointer-events:none;}
-.salary-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(244,241,235,0.5);margin-bottom:6px;}
-.salary-amount{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:600;color:var(--cream);line-height:1;letter-spacing:-2px;position:relative;z-index:1;}
-.salary-amount .dollar{font-size:24px;opacity:0.7;vertical-align:super;}
-.salary-potential{margin-top:12px;display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
-.salary-potential-bar{flex:1;height:4px;background:rgba(255,255,255,0.15);border-radius:99px;overflow:hidden;}
-.salary-potential-fill{height:100%;background:linear-gradient(90deg,rgba(168,197,160,0.6),rgba(168,197,160,1));border-radius:99px;transition:width 1s ease;}
-.salary-potential-text{font-size:11px;color:rgba(244,241,235,0.6);white-space:nowrap;}
-.salary-potential-text strong{color:var(--sage-light);}
-.potential-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--gold);font-weight:500;margin-top:8px;position:relative;z-index:1;animation:pulseGold 2s infinite;}
-@keyframes pulseGold{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0.2);}50%{box-shadow:0 0 0 6px rgba(201,168,76,0);}}
-
-/* UNLOCK */
-.unlock-card{background:var(--white);border-radius:var(--radius);padding:20px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden;}
-.unlock-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--sage),var(--forest));}
-.unlock-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
-.unlock-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--text-dark);}
-.unlock-subtitle{font-size:11px;color:var(--text-soft);margin-top:2px;}
-.unlock-badge{background:var(--forest);color:var(--cream);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;}
-.unlock-badge.senior{background:var(--gold);color:#fff;}
-.level-steps{display:flex;align-items:center;margin-bottom:12px;position:relative;}
-.level-steps-track{position:absolute;left:12px;right:12px;top:12px;height:3px;background:var(--cream2);border-radius:99px;z-index:0;}
-.level-steps-fill{position:absolute;left:12px;top:12px;height:3px;background:linear-gradient(90deg,var(--sage),var(--forest));border-radius:99px;z-index:1;transition:width 1.5s cubic-bezier(0.16,1,0.3,1);max-width:calc(100% - 24px);}
-.level-dots{display:flex;justify-content:space-between;width:100%;position:relative;z-index:2;}
-.level-dot{width:24px;height:24px;border-radius:50%;background:var(--cream2);border:2px solid var(--white);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--text-soft);transition:all 0.4s;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
-.level-dot.done{background:var(--forest);color:var(--cream);}
-.level-dot.current{background:var(--sage-light);color:var(--forest);border-color:var(--forest);transform:scale(1.2);}
-.level-dot.unlocked{background:var(--gold);color:#fff;border-color:var(--gold);}
-.unlock-cta{display:flex;justify-content:space-between;align-items:center;background:rgba(45,74,45,0.05);border-radius:12px;padding:12px 14px;}
-.unlock-cta-text{font-size:12px;color:var(--text-mid);}
-.unlock-cta-text strong{color:var(--forest);font-weight:600;}
-.rate-old{font-size:12px;color:var(--text-soft);text-decoration:line-through;}
-.rate-new{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:var(--forest);}
-
-/* WEEK DOTS */
-.week-days{display:flex;gap:6px;justify-content:space-between;margin-top:4px;}
-.day-dot{flex:1;aspect-ratio:1;border-radius:8px;background:var(--cream2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--text-soft);transition:all 0.4s;max-width:44px;}
-.day-dot.worked{background:var(--forest);color:var(--cream);}
-.day-dot.today{background:var(--sage-light);color:var(--forest);box-shadow:0 2px 8px rgba(45,74,45,0.25);}
-.day-dot.over{background:var(--gold);color:#fff;}
-.week-pct{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:var(--forest);margin-top:6px;}
-.week-pct-sub{font-size:11px;color:var(--text-soft);}
-
-/* POINTAGE */
-.pointage-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.pointage-btn{background:var(--white);border:2px solid var(--border);border-radius:16px;padding:18px 12px;text-align:center;cursor:pointer;transition:all 0.2s;box-shadow:var(--shadow);}
-.pointage-btn:active{transform:scale(0.96);}
-.pointage-btn.done-start{border-color:var(--sage);background:rgba(122,158,122,0.08);}
-.pointage-btn.done-end{border-color:var(--forest);background:rgba(45,74,45,0.06);}
-.pointage-icon{font-size:28px;margin-bottom:6px;}
-.pointage-label{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--text-dark);}
-.pointage-time{font-size:11px;color:var(--text-soft);margin-top:2px;}
-.pointage-status{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:6px;color:var(--sage);}
-
-/* HISTORY */
-.history-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--cream2);}
-.history-item:last-child{border-bottom:none;}
-.history-dot{width:8px;height:8px;border-radius:50%;background:var(--sage);flex-shrink:0;}
-.history-dot.end{background:var(--forest);}
-.history-info{flex:1;}
-.history-date{font-size:12px;font-weight:500;color:var(--text-dark);}
-.history-addr{font-size:11px;color:var(--text-soft);margin-top:1px;}
-.history-type{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);font-weight:500;}
-.history-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid var(--border);}
-
-/* MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,42,26,0.7);backdrop-filter:blur(4px);z-index:200;align-items:flex-end;justify-content:center;}
-.modal-overlay.open{display:flex;}
-.modal-sheet{background:var(--cream);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;animation:slideUp 0.35s cubic-bezier(0.16,1,0.3,1);}
-@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
-.modal-handle{width:40px;height:4px;background:var(--cream2);border-radius:99px;margin:0 auto 20px;}
-.modal-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text-dark);margin-bottom:4px;}
-.modal-sub{font-size:12px;color:var(--text-soft);margin-bottom:20px;}
-.photo-zone{background:var(--white);border:2px dashed var(--border);border-radius:16px;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:12px;overflow:hidden;transition:border-color 0.2s;}
-.photo-zone.has-photo{border-style:solid;border-color:var(--sage);}
-.photo-zone-icon{font-size:32px;}
-.photo-zone-text{font-size:12px;color:var(--text-soft);}
-#photoFileInput{display:none;}
-.gps-pill{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;font-size:11px;margin-bottom:12px;font-weight:500;}
-.gps-pill.ok{background:rgba(122,158,122,0.12);color:var(--forest-light);border:1px solid rgba(122,158,122,0.3);}
-.gps-pill.err{background:rgba(200,60,60,0.08);color:#c83c3c;border:1px solid rgba(200,60,60,0.2);}
-.gps-pill.pending{background:rgba(201,168,76,0.1);color:var(--gold);border:1px solid rgba(201,168,76,0.3);}
-.modal-addr-input{width:100%;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text-dark);outline:none;margin-bottom:12px;-webkit-appearance:none;}
-.modal-addr-input:focus{border-color:var(--sage);}
-.btn-confirm{width:100%;background:var(--forest);color:var(--cream);border:none;border-radius:14px;padding:17px;font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-.btn-confirm:active{opacity:0.85;transform:scale(0.98);}
-
-/* RECAP */
-.recap-day{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--cream2);}
-.recap-day:last-child{border-bottom:none;}
-.recap-day-date{font-size:12px;color:var(--text-mid);font-weight:500;min-width:60px;}
-.recap-day-addr{flex:1;font-size:11px;color:var(--text-soft);}
-.recap-day-amount{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;}
-.recap-day-amount.rate-220{color:var(--sage);}
-.recap-day-amount.rate-250{color:var(--forest);}
-.paid-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(45,74,45,0.07);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--text-soft);font-weight:500;}
-.paid-badge.paid{background:rgba(45,74,45,0.1);color:var(--forest);border-color:var(--sage-light);}
-
-/* TABS */
+/* Tabs */
 .tab-bar{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom,8px);z-index:100;box-shadow:0 -4px 20px rgba(45,74,45,0.06);}
-.tab-item{flex:1;padding:10px 8px 8px;text-align:center;cursor:pointer;transition:all 0.15s;color:var(--text-soft);}
+.tab-item{flex:1;padding:10px 8px 8px;text-align:center;cursor:pointer;color:var(--text-soft);}
 .tab-item.active{color:var(--forest);}
-.tab-item-icon{font-size:20px;}
-.tab-item-label{font-size:9px;letter-spacing:0.8px;text-transform:uppercase;margin-top:2px;font-weight:500;}
+.tab-icon{font-size:20px;}
+.tab-label{font-size:9px;letter-spacing:0.8px;text-transform:uppercase;margin-top:2px;font-weight:500;}
+
+/* Tab content */
 .tab-content{display:none;padding:16px 16px 100px;}
 .tab-content.active{display:block;}
 
-/* TOAST */
+/* Cards */
+.card{background:var(--white);border-radius:var(--radius);padding:18px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);}
+.card-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-soft);margin-bottom:12px;font-weight:500;}
+
+/* Bento */
+.bento-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.bento-card{border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);}
+.bento-dark{background:var(--forest);}
+.bento-light{background:#e8f0e8;border:1px solid rgba(45,74,45,0.12);}
+.bento-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:500;margin-bottom:6px;}
+.bento-dark .bento-lbl{color:rgba(244,241,235,0.5);}
+.bento-light .bento-lbl{color:var(--forest-light);}
+.bento-val{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:600;line-height:1;letter-spacing:-1px;}
+.bento-dark .bento-val{color:var(--cream);}
+.bento-light .bento-val{color:var(--forest);}
+.bento-unit{font-family:'DM Sans',sans-serif;font-size:13px;opacity:0.6;}
+
+/* Progress */
+.prog-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.prog-info-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;}
+.bento-dark .prog-info-lbl{color:rgba(244,241,235,0.5);}
+.prog-info-val{font-size:11px;font-weight:500;}
+.bento-dark .prog-info-val{color:var(--sage-light);}
+.prog-track{height:5px;border-radius:99px;overflow:hidden;}
+.bento-dark .prog-track{background:rgba(255,255,255,0.12);}
+.bento-light .prog-track{background:rgba(45,74,45,0.15);}
+.prog-fill{height:100%;border-radius:99px;transition:width 1s cubic-bezier(0.16,1,0.3,1);}
+.bento-dark .prog-fill{background:linear-gradient(90deg,var(--sage),var(--sage-light));}
+.bento-light .prog-fill{background:var(--forest);}
+
+/* Salary card */
+.salary-card{background:var(--forest);border-radius:var(--radius);padding:22px 20px;margin-bottom:12px;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(45,74,45,0.25);}
+.salary-card::after{content:'';position:absolute;width:180px;height:180px;background:radial-gradient(circle,rgba(168,197,160,0.2) 0%,transparent 70%);top:-60px;right:-40px;pointer-events:none;}
+.salary-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(244,241,235,0.5);margin-bottom:6px;}
+.salary-amount{font-family:'Cormorant Garamond',serif;font-size:50px;font-weight:600;color:var(--cream);line-height:1;letter-spacing:-2px;position:relative;z-index:1;}
+.salary-dollar{font-size:22px;opacity:0.65;vertical-align:super;}
+.salary-potential{margin-top:12px;display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
+.salary-pot-bar{flex:1;height:4px;background:rgba(255,255,255,0.15);border-radius:99px;overflow:hidden;}
+.salary-pot-fill{height:100%;background:linear-gradient(90deg,rgba(168,197,160,0.6),rgba(168,197,160,1));border-radius:99px;transition:width 1s ease;}
+.salary-pot-txt{font-size:11px;color:rgba(244,241,235,0.6);white-space:nowrap;}
+.salary-pot-txt strong{color:var(--sage-light);}
+.pot-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--gold);font-weight:500;margin-top:8px;position:relative;z-index:1;}
+
+/* Unlock */
+.unlock-card{background:var(--white);border-radius:var(--radius);padding:18px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden;}
+.unlock-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--sage),var(--forest));}
+.unlock-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+.unlock-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--text-dark);}
+.unlock-sub{font-size:11px;color:var(--text-soft);margin-top:2px;}
+.unlock-badge{background:var(--forest);color:var(--cream);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;}
+.unlock-badge.senior{background:var(--gold);color:#fff;}
+.level-wrap{display:flex;align-items:center;margin-bottom:12px;position:relative;}
+.level-track{position:absolute;left:12px;right:12px;top:12px;height:3px;background:var(--cream2);border-radius:99px;}
+.level-fill{position:absolute;left:12px;top:12px;height:3px;background:linear-gradient(90deg,var(--sage),var(--forest));border-radius:99px;transition:width 1.5s cubic-bezier(0.16,1,0.3,1);max-width:calc(100% - 24px);}
+.level-dots{display:flex;justify-content:space-between;width:100%;position:relative;z-index:2;}
+.ldot{width:24px;height:24px;border-radius:50%;background:var(--cream2);border:2px solid var(--white);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--text-soft);transition:all 0.4s;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
+.ldot.done{background:var(--forest);color:var(--cream);}
+.ldot.current{background:var(--sage-light);color:var(--forest);border-color:var(--forest);transform:scale(1.2);}
+.ldot.gold{background:var(--gold);color:#fff;border-color:var(--gold);}
+.unlock-cta{display:flex;justify-content:space-between;align-items:center;background:rgba(45,74,45,0.05);border-radius:12px;padding:12px 14px;}
+.unlock-cta-txt{font-size:12px;color:var(--text-mid);}
+.unlock-cta-txt strong{color:var(--forest);}
+.rate-old{font-size:12px;color:var(--text-soft);text-decoration:line-through;}
+.rate-new{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:var(--forest);}
+
+/* Week dots */
+.week-days{display:flex;gap:6px;margin-top:4px;}
+.day-dot{flex:1;aspect-ratio:1;border-radius:8px;background:var(--cream2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--text-soft);transition:all 0.4s;max-width:44px;}
+.day-dot.worked{background:var(--forest);color:var(--cream);}
+.day-dot.today{background:var(--sage-light);color:var(--forest);}
+.day-dot.over{background:var(--gold);color:#fff;}
+.week-pct{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--forest);margin-top:6px;}
+.week-pct-sub{font-size:11px;color:var(--text-soft);}
+
+/* Pointage */
+.ptg-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ptg-btn{background:var(--white);border:2px solid var(--border);border-radius:16px;padding:18px 12px;text-align:center;cursor:pointer;box-shadow:var(--shadow);}
+.ptg-btn.done-start{border-color:var(--sage);background:rgba(122,158,122,0.08);}
+.ptg-btn.done-end{border-color:var(--forest);background:rgba(45,74,45,0.06);}
+.ptg-icon{font-size:28px;margin-bottom:6px;}
+.ptg-lbl{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--text-dark);}
+.ptg-time{font-size:11px;color:var(--text-soft);margin-top:2px;}
+.ptg-status{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:5px;color:var(--sage);}
+
+/* History */
+.hist-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--cream2);}
+.hist-item:last-child{border-bottom:none;}
+.hist-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.hist-dot.start{background:var(--sage);}
+.hist-dot.end{background:var(--forest);}
+.hist-info{flex:1;}
+.hist-date{font-size:12px;font-weight:500;color:var(--text-dark);}
+.hist-addr{font-size:11px;color:var(--text-soft);margin-top:1px;}
+.hist-type{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);}
+.hist-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid var(--border);}
+
+/* Gallery */
+.gal-section{margin-bottom:16px;}
+.gal-section-title{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px;}
+.gtag{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;}
+.gtag.arrive{background:rgba(122,158,122,0.15);color:var(--sage);}
+.gtag.depart{background:rgba(45,74,45,0.12);color:var(--forest);}
+.gal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.gal-wrap{position:relative;}
+.gal-thumb{aspect-ratio:1;border-radius:10px;object-fit:cover;border:1px solid var(--border);cursor:pointer;width:100%;}
+.gal-date{position:absolute;bottom:4px;left:4px;right:4px;background:rgba(26,42,26,0.72);color:white;font-size:9px;border-radius:5px;padding:2px 5px;text-align:center;}
+.gal-empty{text-align:center;padding:20px;color:var(--text-soft);font-size:12px;grid-column:1/-1;}
+
+/* Profile */
+.prof-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.prof-stat{background:var(--cream2);border-radius:12px;padding:12px;text-align:center;}
+.prof-stat-val{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--forest);}
+.prof-stat-lbl{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-top:2px;}
+
+/* Calendar */
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.cal-nav-btn{background:var(--cream2);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cal-month-lbl{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--text-dark);}
+.cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
+.cal-day-name{text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-cell{text-align:center;padding:5px 2px;border-radius:6px;font-size:11px;color:var(--text-soft);}
+.cal-cell.worked{background:var(--forest);color:var(--cream);font-weight:500;}
+.cal-cell.today{background:var(--sage-light);color:var(--forest);font-weight:600;}
+
+/* Recap */
+.recap-day{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--cream2);}
+.recap-day:last-child{border-bottom:none;}
+.recap-day-date{font-size:12px;color:var(--text-mid);font-weight:500;min-width:60px;}
+.recap-day-addr{flex:1;font-size:11px;color:var(--text-soft);}
+.recap-day-amt{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;}
+.recap-day-amt.r220{color:var(--sage);}
+.recap-day-amt.r250{color:var(--forest);}
+.paid-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:500;background:rgba(45,74,45,0.07);border:1px solid var(--border);color:var(--text-soft);}
+.paid-badge.paid{background:rgba(45,74,45,0.1);color:var(--forest);border-color:var(--sage-light);}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,42,26,0.75);backdrop-filter:blur(4px);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-sheet{background:var(--cream);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;animation:slideUp 0.3s cubic-bezier(0.16,1,0.3,1);}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-handle{width:40px;height:4px;background:var(--cream2);border-radius:99px;margin:0 auto 20px;}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text-dark);margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--text-soft);margin-bottom:18px;}
+.photo-zone{background:var(--white);border:2px dashed var(--border);border-radius:14px;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:12px;overflow:hidden;}
+.photo-zone.has{border-style:solid;border-color:var(--sage);}
+.pz-icon{font-size:30px;}
+.pz-txt{font-size:12px;color:var(--text-soft);}
+.gps-pill{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;font-size:11px;margin-bottom:12px;font-weight:500;}
+.gps-pill.ok{background:rgba(122,158,122,0.12);color:var(--forest-light);border:1px solid rgba(122,158,122,0.3);}
+.gps-pill.err{background:rgba(200,60,60,0.08);color:var(--danger);border:1px solid rgba(200,60,60,0.2);}
+.gps-pill.pending{background:rgba(201,168,76,0.1);color:var(--gold);border:1px solid rgba(201,168,76,0.3);}
+.gps-btn{width:100%;background:var(--forest);color:var(--cream);border:none;border-radius:11px;padding:13px;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;cursor:pointer;margin-bottom:10px;display:block;text-align:center;}
+.addr-input{width:100%;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text-dark);outline:none;margin-bottom:12px;-webkit-appearance:none;}
+.addr-input:focus{border-color:var(--sage);}
+.confirm-btn{width:100%;background:var(--forest);color:var(--cream);border:none;border-radius:14px;padding:17px;font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;cursor:pointer;display:block;text-align:center;}
+
+/* Sync indicator */
+.sync-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:rgba(244,241,235,0.5);margin-top:4px;}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--sage-light);}
+.sync-dot.syncing{animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* Toast */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--forest);color:var(--cream);padding:10px 18px;border-radius:24px;font-size:13px;opacity:0;transition:all 0.3s;z-index:999;white-space:nowrap;box-shadow:0 4px 16px rgba(45,74,45,0.3);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-/* PIN LOGIN */
-.pin-screen-worker{background:var(--forest);min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;position:relative;overflow:hidden;}
-.pin-screen-worker::before{content:'';position:absolute;width:400px;height:400px;background:radial-gradient(circle,rgba(122,158,122,0.3) 0%,transparent 70%);top:-100px;right:-100px;pointer-events:none;}
-.pin-screen-worker::after{content:'';position:absolute;width:300px;height:300px;background:radial-gradient(circle,rgba(168,197,160,0.15) 0%,transparent 70%);bottom:0;left:-50px;pointer-events:none;}
-.pw-logo{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;color:var(--cream);text-align:center;margin-bottom:4px;}
-.pw-logo span{color:var(--sage-light);}
-.pw-sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(244,241,235,0.45);text-align:center;margin-bottom:36px;}
-.pw-card{background:var(--cream);border-radius:24px;padding:26px 22px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.3);position:relative;z-index:1;}
-.pw-step{display:none;}.pw-step.active{display:block;}
-.pw-card-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text-dark);margin-bottom:4px;}
-.pw-card-sub{font-size:12px;color:var(--text-soft);margin-bottom:18px;}
-/* worker selector */
-.pw-worker-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
-.pw-worker-btn{background:var(--cream2);border:2px solid transparent;border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;transition:all 0.2s;}
-.pw-worker-btn:active{transform:scale(0.96);}
-.pw-worker-btn.selected{border-color:var(--forest);background:rgba(45,74,45,0.06);}
-.pw-avatar{width:42px;height:42px;background:var(--forest);border-radius:50%;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--cream);}
-.pw-wname{font-size:13px;font-weight:500;color:var(--text-dark);}
-.pw-wrate{font-size:11px;color:var(--sage);margin-top:2px;}
-/* pin dots & grid */
-.pw-dots{display:flex;gap:12px;justify-content:center;margin-bottom:22px;}
-.pw-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(45,74,45,0.2);background:transparent;transition:all 0.2s;}
-.pw-dot.filled{background:var(--forest);border-color:var(--forest);}
-.pw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.pw-key{background:var(--cream2);border:none;border-radius:13px;height:58px;font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--text-dark);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
-.pw-key:active{background:var(--sage-light);color:var(--forest);transform:scale(0.93);}
-.pw-key.del{font-family:'DM Sans',sans-serif;font-size:18px;}
-.pw-key.clr{font-family:'DM Sans',sans-serif;font-size:12px;letter-spacing:0.5px;}
-.pw-error{text-align:center;color:var(--danger,#c83c3c);font-size:12px;margin-top:10px;height:16px;opacity:0;transition:opacity 0.3s;}
-.pw-error.show{opacity:1;}
-.pw-hint{text-align:center;font-size:11px;color:var(--text-soft);margin-top:10px;}
-.pw-btn{width:100%;background:var(--forest);color:var(--cream);border:none;border-radius:13px;padding:15px;font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;margin-top:4px;}
-.pw-btn:active{opacity:0.85;transform:scale(0.98);}
-/* new pin creation */
-.pw-new-pin-confirm{margin-top:12px;}
-
-
-/* GALLERY */
-.gallery-section { margin-bottom:18px; }
-.gallery-section-title {
-  display:flex; align-items:center; gap:8px;
-  font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
-  color:var(--text-soft); font-weight:500; margin-bottom:10px;
-}
-.gallery-section-title .gtag {
-  padding:2px 8px; border-radius:20px; font-size:9px; font-weight:600;
-}
-.gtag.arrive { background:rgba(122,158,122,0.15); color:var(--sage); }
-.gtag.depart { background:rgba(45,74,45,0.12); color:var(--forest); }
-.gallery-grid {
-  display:grid; grid-template-columns:repeat(3,1fr); gap:6px;
-}
-.gallery-thumb {
-  aspect-ratio:1; border-radius:10px; object-fit:cover;
-  border:1px solid var(--border); cursor:pointer;
-  transition:transform 0.15s;
-  width:100%;
-}
-.gallery-thumb:active { transform:scale(0.95); }
-.gallery-thumb-wrap { position:relative; }
-.gallery-date-badge {
-  position:absolute; bottom:4px; left:4px; right:4px;
-  background:rgba(26,42,26,0.72); color:white;
-  font-size:9px; border-radius:5px; padding:2px 5px;
-  text-align:center; backdrop-filter:blur(2px);
-}
-.gallery-empty { text-align:center; padding:24px 12px; color:var(--text-soft); font-size:12px; }
-.gallery-empty-icon { font-size:32px; margin-bottom:8px; }
-
 </style>
 </head>
 <body>
 
-<!-- PIN LOGIN WORKER -->
-<div id="workerPinScreen" class="pin-screen-worker">
-  <div class="pw-logo">Get Your <span>Shift</span></div>
-  <div class="pw-sub">Mon Chantier</div>
-  <div class="pw-card">
-    <!-- STEP 1: choose worker -->
-    <div class="pw-step active" id="pwStep1">
-      <div class="pw-card-title">Bonjour 👋</div>
-      <div class="pw-card-sub">Qui es-tu ?</div>
-      <div class="pw-worker-grid" id="pwWorkerGrid"></div>
-      <button class="pw-btn" onclick="pwSelectContinue()">Continuer →</button>
+<!-- LOADING -->
+<div id="loadingScreen">
+  <div class="load-logo">Get Your <span>Shift</span></div>
+  <div class="load-sub">Connexion en cours…</div>
+  <div class="load-spinner"></div>
+</div>
+
+<!-- PIN / LOGIN -->
+<div id="pinScreen" style="display:none;flex-direction:column;">
+  <div class="pin-logo">Get Your <span>Shift</span></div>
+  <div class="pin-subtitle">Mon Chantier</div>
+  <div class="pin-card">
+
+    <!-- Step 1: choose worker -->
+    <div class="pin-step active" id="step1">
+      <div class="pin-card-title">Bonjour 👋</div>
+      <div class="pin-card-sub">Qui es-tu ?</div>
+      <div class="worker-grid" id="workerGrid"></div>
+      <div class="pin-error" id="step1Error"></div>
     </div>
-    <!-- STEP 2: enter PIN -->
-    <div class="pw-step" id="pwStep2">
-      <div class="pw-card-title" id="pwPinTitle">Ton code PIN</div>
-      <div class="pw-card-sub" id="pwPinSub">Entre ton code à 4 chiffres</div>
-      <div style="display:flex;gap:14px;justify-content:center;margin-bottom:20px;padding:14px 0;">
-        <div class="pw-dot" id="pwd0"></div>
-        <div class="pw-dot" id="pwd1"></div>
-        <div class="pw-dot" id="pwd2"></div>
-        <div class="pw-dot" id="pwd3"></div>
+
+    <!-- Step 2: enter PIN -->
+    <div class="pin-step" id="step2">
+      <div class="pin-card-title" id="pinTitle">Ton PIN</div>
+      <div class="pin-card-sub">Entre ton code à 4 chiffres</div>
+      <div class="pw-dots">
+        <div class="pw-dot" id="pd0"></div>
+        <div class="pw-dot" id="pd1"></div>
+        <div class="pw-dot" id="pd2"></div>
+        <div class="pw-dot" id="pd3"></div>
       </div>
-      <input id="pwPinInput" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code"
-        placeholder="0000"
-        oninput="handleWorkerPin(this.value)"
-        style="display:block;width:100%;text-align:center;font-size:36px;letter-spacing:18px;padding:14px 8px;border:2px solid rgba(45,74,45,0.2);border-radius:14px;background:var(--cream2);color:var(--forest);font-family:'Cormorant Garamond',serif;font-weight:700;outline:none;-webkit-appearance:none;appearance:none;margin-bottom:14px;box-sizing:border-box;caret-color:var(--forest);">
-      <div class="pw-error" id="pwError">Code incorrect ✕</div>
-      <div class="pw-hint" id="pwHint"></div>
-      <div style="margin-top:12px;">
-        <button class="pw-btn" style="background:var(--cream2);color:var(--text-dark);font-size:14px;padding:11px;" onclick="pwBack()">← Changer de nom</button>
-      </div>
+      <input class="pin-input" id="pinInput" type="number" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="one-time-code">
+      <button class="pw-btn" id="pinValidBtn">Valider →</button>
+      <button class="pw-btn pw-btn-light" id="backBtn">← Changer de nom</button>
+      <div class="pin-error" id="pinError"></div>
     </div>
-    <!-- STEP 3: create new PIN (first time) -->
-    <div class="pw-step" id="pwStep3">
-      <div class="pw-card-title">Crée ton PIN 🔐</div>
-      <div class="pw-card-sub" id="pwCreateSub">Choisis un code à 4 chiffres — tu en auras besoin à chaque connexion</div>
-      <div style="display:flex;gap:14px;justify-content:center;margin-bottom:20px;padding:14px 0;">
-        <div class="pw-dot" id="pwcd0"></div>
-        <div class="pw-dot" id="pwcd1"></div>
-        <div class="pw-dot" id="pwcd2"></div>
-        <div class="pw-dot" id="pwcd3"></div>
+
+    <!-- Step 3: create PIN -->
+    <div class="pin-step" id="step3">
+      <div class="pin-card-title">Crée ton PIN 🔐</div>
+      <div class="pin-card-sub" id="createSub">Choisis un code à 4 chiffres</div>
+      <div class="pw-dots">
+        <div class="pw-dot" id="cd0"></div>
+        <div class="pw-dot" id="cd1"></div>
+        <div class="pw-dot" id="cd2"></div>
+        <div class="pw-dot" id="cd3"></div>
       </div>
-      <input id="pwCreateInput" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
-        placeholder="0000"
-        oninput="handleWorkerCreate(this.value)"
-        style="display:block;width:100%;text-align:center;font-size:36px;letter-spacing:18px;padding:14px 8px;border:2px solid rgba(45,74,45,0.2);border-radius:14px;background:var(--cream2);color:var(--forest);font-family:'Cormorant Garamond',serif;font-weight:700;outline:none;-webkit-appearance:none;appearance:none;margin-bottom:14px;box-sizing:border-box;caret-color:var(--forest);">
-      <div class="pw-error" id="pwCreateError"></div>
-      <div style="margin-top:12px;">
-        <button class="pw-btn" style="background:var(--cream2);color:var(--text-dark);font-size:14px;padding:11px;" onclick="pwBack()">← Retour</button>
-      </div>
+      <input class="pin-input" id="createInput" type="number" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
+      <button class="pw-btn" id="createValidBtn">Confirmer →</button>
+      <button class="pw-btn pw-btn-light" id="backBtn2">← Retour</button>
+      <div class="pin-error" id="createError"></div>
     </div>
+
   </div>
 </div>
 
-<div class="screen" id="screen-app" style="display:none;">
+<!-- APP -->
+<div id="appScreen" style="display:none;">
   <div class="app-header">
     <div class="header-top">
       <div class="header-logo">Get Your <span>Shift</span></div>
-      <div class="header-date">
-        <div class="header-date-day" id="hDay">—</div>
-        <div class="header-date-full" id="hDate">—</div>
-        <button class="logout-btn" onclick="doLogout()">↩ Changer</button>
+      <div class="header-right">
+        <div class="header-date-day" id="hDay"></div>
+        <div class="header-date-full" id="hDate"></div>
+        <button class="logout-btn" id="logoutBtn">↩ Changer</button>
       </div>
     </div>
-    <div class="header-worker-name" id="hName">—</div>
-    <div class="header-worker-sub" id="hSub">—</div>
+    <div class="header-worker-name" id="hName"></div>
+    <div class="header-worker-sub" id="hSub"></div>
+    <div class="sync-badge"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">Synchronisé</span></div>
   </div>
 
   <div style="overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:80px;">
+
     <div class="tab-bar">
-      <div class="tab-item active" onclick="switchTab('home')"><div class="tab-item-icon">🏠</div><div class="tab-item-label">Accueil</div></div>
-      <div class="tab-item" onclick="switchTab('pointage')"><div class="tab-item-icon">📍</div><div class="tab-item-label">Pointage</div></div>
-      <div class="tab-item" onclick="switchTab('galerie')"><div class="tab-item-icon">📸</div><div class="tab-item-label">Galerie</div></div>
-      <div class="tab-item" onclick="switchTab('recap')"><div class="tab-item-icon">💰</div><div class="tab-item-label">Paye</div></div>
-      <div class="tab-item" onclick="switchTab('profil')"><div class="tab-item-icon">👤</div><div class="tab-item-label">Profil</div></div>
+      <div class="tab-item active" id="tabHome" onclick="switchTab('home')"><div class="tab-icon">🏠</div><div class="tab-label">Accueil</div></div>
+      <div class="tab-item" id="tabPointage" onclick="switchTab('pointage')"><div class="tab-icon">📍</div><div class="tab-label">Pointage</div></div>
+      <div class="tab-item" id="tabGalerie" onclick="switchTab('galerie')"><div class="tab-icon">📸</div><div class="tab-label">Galerie</div></div>
+      <div class="tab-item" id="tabRecap" onclick="switchTab('recap')"><div class="tab-icon">💰</div><div class="tab-label">Paye</div></div>
+      <div class="tab-item" id="tabProfil" onclick="switchTab('profil')"><div class="tab-icon">👤</div><div class="tab-label">Profil</div></div>
     </div>
 
+    <!-- HOME -->
     <div class="tab-content active" id="tab-home">
       <div class="bento-grid">
-        <div class="bento-card dark">
-          <div class="bento-label">Cette semaine</div>
-          <div class="bento-value"><span id="bWeekDays">0</span><span class="bento-unit">j</span></div>
-          <div class="progress-wrap">
-            <div class="progress-info"><span class="progress-info-label">Objectif 5j</span><span class="progress-info-val" id="bWeekPct">0%</span></div>
-            <div class="progress-track"><div class="progress-fill" id="bWeekBar" style="width:0%"></div></div>
-          </div>
+        <div class="bento-card bento-dark">
+          <div class="bento-lbl">Cette semaine</div>
+          <div class="bento-val"><span id="bWeekDays">0</span><span class="bento-unit">j</span></div>
+          <div class="prog-info" style="margin-top:10px;"><span class="prog-info-lbl">Objectif 5j</span><span class="prog-info-val" id="bWeekPct">0%</span></div>
+          <div class="prog-track"><div class="prog-fill" id="bWeekBar" style="width:0%"></div></div>
         </div>
-        <div class="bento-card light">
-          <div class="bento-label">Taux actuel</div>
-          <div class="bento-value" id="bRate">$220</div>
-          <div style="font-size:10px;color:var(--forest-light);margin-top:8px;font-weight:500;line-height:1.4;" id="bRateNote">—</div>
+        <div class="bento-card bento-light">
+          <div class="bento-lbl">Taux actuel</div>
+          <div class="bento-val" id="bRate" style="font-size:26px;">$220</div>
+          <div style="font-size:10px;color:var(--forest-light);margin-top:8px;font-weight:500;" id="bRateNote"></div>
         </div>
       </div>
 
       <div class="salary-card">
-        <div class="salary-label">Salaire semaine en cours</div>
-        <div class="salary-amount"><span class="dollar">$</span><span id="salaryCurrent">0</span></div>
+        <div class="salary-lbl">Salaire semaine en cours</div>
+        <div class="salary-amount"><span class="salary-dollar">$</span><span id="salaryCurrent">0</span></div>
         <div class="salary-potential">
-          <div class="salary-potential-bar"><div class="salary-potential-fill" id="salaryBar" style="width:0%"></div></div>
-          <div class="salary-potential-text">Max <strong id="salaryMax">$1,250</strong></div>
+          <div class="salary-pot-bar"><div class="salary-pot-fill" id="salaryBar" style="width:0%"></div></div>
+          <div class="salary-pot-txt">Max <strong id="salaryMax">$1,250</strong></div>
         </div>
-        <div class="potential-badge">✨ +$<span id="potentialExtra">0</span> si tu travailles demain</div>
+        <div class="pot-badge">✨ +$<span id="potExtra">0</span> si tu travailles demain</div>
       </div>
 
       <div class="unlock-card">
         <div class="unlock-header">
-          <div><div class="unlock-title">Débloquer $250/jour</div><div class="unlock-subtitle" id="unlockSub">—</div></div>
-          <div class="unlock-badge" id="unlockBadge">—</div>
+          <div><div class="unlock-title">Débloquer $250/jour</div><div class="unlock-sub" id="unlockSub"></div></div>
+          <div class="unlock-badge" id="unlockBadge"></div>
         </div>
-        <div class="level-steps" id="levelSteps">
-          <div class="level-steps-track"></div>
-          <div class="level-steps-fill" id="levelFill" style="width:0%"></div>
+        <div class="level-wrap">
+          <div class="level-track"></div>
+          <div class="level-fill" id="levelFill" style="width:0%"></div>
           <div class="level-dots" id="levelDots"></div>
         </div>
         <div class="unlock-cta">
-          <div class="unlock-cta-text" id="unlockCta">—</div>
+          <div class="unlock-cta-txt" id="unlockCta"></div>
           <div style="display:flex;gap:8px;align-items:center;"><span class="rate-old">$220</span><span class="rate-new">$250</span></div>
         </div>
       </div>
@@ -396,111 +396,57 @@ body{padding-bottom:env(safe-area-inset-bottom,24px);}
         <div class="card-label">Jours travaillés cette semaine</div>
         <div class="week-days" id="weekDaysDots"></div>
         <div class="week-pct" id="weekPctBig">0%</div>
-        <div class="week-pct-sub" id="weekPctSub">de l'objectif hebdomadaire</div>
+        <div class="week-pct-sub" id="weekPctSub"></div>
       </div>
     </div>
 
+    <!-- POINTAGE -->
     <div class="tab-content" id="tab-pointage">
       <div class="card" style="margin-bottom:12px;">
-        <div class="card-label">Aujourd'hui — pointer ma présence</div>
-        <div class="pointage-btns">
-          <div class="pointage-btn" id="btnArrivee" onclick="openModal('start')">
-            <div class="pointage-icon">🌅</div>
-            <div class="pointage-label">Arrivée</div>
-            <div class="pointage-time">7h00</div>
-            <div class="pointage-status" id="startStatus"></div>
+        <div class="card-label">Pointer ma présence aujourd'hui</div>
+        <div class="ptg-btns">
+          <div class="ptg-btn" id="btnArrivee" onclick="openModal('start')">
+            <div class="ptg-icon">🌅</div>
+            <div class="ptg-lbl">Arrivée</div>
+            <div class="ptg-time">7h00</div>
+            <div class="ptg-status" id="startStatus"></div>
           </div>
-          <div class="pointage-btn" id="btnDepart" onclick="openModal('end')">
-            <div class="pointage-icon">🌇</div>
-            <div class="pointage-label">Départ</div>
-            <div class="pointage-time">15h30</div>
-            <div class="pointage-status" id="endStatus"></div>
+          <div class="ptg-btn" id="btnDepart" onclick="openModal('end')">
+            <div class="ptg-icon">🌇</div>
+            <div class="ptg-lbl">Départ</div>
+            <div class="ptg-time">15h30</div>
+            <div class="ptg-status" id="endStatus"></div>
           </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-label">Historique des pointages</div>
+        <div class="card-label">Historique</div>
         <div id="historyList"></div>
       </div>
     </div>
 
+    <!-- GALERIE -->
     <div class="tab-content" id="tab-galerie">
       <div class="card">
-        <div class="card-label">Mes photos — 2 semaines glissantes</div>
-        <div class="gallery-section">
-          <div class="gallery-section-title">🌅 <span class="gtag arrive">Arrivée</span></div>
-          <div class="gallery-grid" id="wGallerieArrivee"></div>
+        <div class="card-label">Mes photos — 14 derniers jours</div>
+        <div class="gal-section">
+          <div class="gal-section-title">🌅 <span class="gtag arrive">Arrivées</span></div>
+          <div class="gal-grid" id="galArrivee"></div>
         </div>
-        <div class="gallery-section">
-          <div class="gallery-section-title">🌇 <span class="gtag depart">Départ</span></div>
-          <div class="gallery-grid" id="wGallerieDepart"></div>
+        <div class="gal-section">
+          <div class="gal-section-title">🌇 <span class="gtag depart">Départs</span></div>
+          <div class="gal-grid" id="galDepart"></div>
         </div>
-        <div style="font-size:10px;color:var(--text-soft);text-align:center;margin-top:8px;">Les photos sont supprimées automatiquement après 14 jours</div>
+        <div style="font-size:10px;color:var(--text-soft);text-align:center;margin-top:6px;">Photos supprimées après 14 jours</div>
       </div>
     </div>
 
-    <div class="tab-content" id="tab-profil">
-      <!-- WORKER PROFILE -->
-      <div class="card" style="margin-bottom:10px;">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
-          <div id="profAvatar" style="width:56px;height:56px;background:var(--forest);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--cream);flex-shrink:0;"></div>
-          <div>
-            <div id="profName" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text-dark);"></div>
-            <div id="profRate" style="font-size:12px;color:var(--sage);margin-top:2px;font-weight:500;"></div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;">
-          <div style="background:var(--cream2);border-radius:12px;padding:12px;text-align:center;">
-            <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--forest);" id="profTotalDays">0</div>
-            <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-top:2px;">Jours total</div>
-          </div>
-          <div style="background:var(--cream2);border-radius:12px;padding:12px;text-align:center;">
-            <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--forest);" id="profTotalEarned">$0</div>
-            <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-top:2px;">Gagné total</div>
-          </div>
-          <div style="background:var(--cream2);border-radius:12px;padding:12px;text-align:center;">
-            <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--forest);" id="profChantiers">0</div>
-            <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-top:2px;">Chantiers</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CALENDAR -->
-      <div class="card" style="margin-bottom:10px;">
-        <div class="card-label">Calendrier du mois</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <button onclick="profCalMonth(-1)" style="background:var(--cream2);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
-          <div id="profCalLabel" style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--text-dark);"></div>
-          <button onclick="profCalMonth(1)" style="background:var(--cream2);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">›</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px;">
-          <div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">L</div>
-          <div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">M</div>
-          <div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">M</div>
-          <div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">J</div>
-          <div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">V</div>
-          <div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">S</div>
-          <div style="text-align:center;font-size:9px;font-weight:600;color:var(--text-soft);padding:4px;">D</div>
-        </div>
-        <div id="profCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
-        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-soft);"><div style="width:10px;height:10px;background:var(--forest);border-radius:3px;"></div>Travaillé</div>
-          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-soft);"><div style="width:10px;height:10px;background:var(--sage-light);border-radius:3px;"></div>Aujourd'hui</div>
-        </div>
-      </div>
-
-      <!-- CHANTIERS -->
-      <div class="card">
-        <div class="card-label">Chantiers visités</div>
-        <div id="profChantiersList"></div>
-      </div>
-    </div>
-
+    <!-- RECAP -->
     <div class="tab-content" id="tab-recap">
       <div class="salary-card" style="margin-bottom:12px;">
-        <div class="salary-label">Total semaine en cours</div>
-        <div class="salary-amount"><span class="dollar">$</span><span id="recapTotal">0</span></div>
-        <div class="potential-badge" style="animation:none;border-color:rgba(168,197,160,0.4);color:var(--sage-light);" id="recapStatus">—</div>
+        <div class="salary-lbl">Total semaine en cours</div>
+        <div class="salary-amount"><span class="salary-dollar">$</span><span id="recapTotal">0</span></div>
+        <div class="paid-badge" id="recapStatus" style="margin-top:8px;position:relative;z-index:1;"></div>
       </div>
       <div class="card">
         <div class="card-label">Détail des jours</div>
@@ -511,575 +457,650 @@ body{padding-bottom:env(safe-area-inset-bottom,24px);}
         <div id="recapHistory"></div>
       </div>
     </div>
+
+    <!-- PROFIL -->
+    <div class="tab-content" id="tab-profil">
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+          <div id="profAvatar" style="width:56px;height:56px;background:var(--forest);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--cream);flex-shrink:0;"></div>
+          <div><div id="profName" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text-dark);"></div><div id="profRate" style="font-size:12px;color:var(--sage);margin-top:2px;"></div></div>
+        </div>
+        <div class="prof-stat-grid">
+          <div class="prof-stat"><div class="prof-stat-val" id="profDays">0</div><div class="prof-stat-lbl">Jours total</div></div>
+          <div class="prof-stat"><div class="prof-stat-val" id="profEarned">$0</div><div class="prof-stat-lbl">Gagné total</div></div>
+          <div class="prof-stat"><div class="prof-stat-val" id="profChantiers">0</div><div class="prof-stat-lbl">Chantiers</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="cal-header">
+          <button class="cal-nav-btn" onclick="calMonth(-1)">‹</button>
+          <div class="cal-month-lbl" id="calLabel"></div>
+          <button class="cal-nav-btn" onclick="calMonth(1)">›</button>
+        </div>
+        <div class="cal-days-header" id="calDayNames"></div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Chantiers visités</div>
+        <div id="chantiersList"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
+<!-- MODAL POINTAGE -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="modalTitle">Pointer l'arrivée</div>
-    <div class="modal-sub" id="modalSub">Photo du chantier obligatoire</div>
-    <div class="photo-zone" id="photoZone" onclick="document.getElementById('photoFileInput').click()">
-      <div class="photo-zone-icon">📸</div>
-      <div class="photo-zone-text">Appuyer pour prendre une photo</div>
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-sub" id="modalSub"></div>
+    <div class="photo-zone" id="photoZone" onclick="document.getElementById('photoInput').click()">
+      <div class="pz-icon">📸</div><div class="pz-txt">Prendre une photo</div>
     </div>
-    <input type="file" id="photoFileInput" accept="image/*" capture="environment" onchange="handlePhoto(event)">
-    <input class="modal-addr-input" id="modalAddr" placeholder="Adresse du chantier (ex: 1080 Oxford Falls Rd)">
-    <!-- GPS REQUEST STEP -->
-    <div id="gpsStep">
-      <div style="background:rgba(45,74,45,0.06);border:1px solid var(--border);border-radius:14px;padding:14px 14px 12px;margin-bottom:12px;">
-        <div style="display:flex;align-items:flex-start;gap:10px;">
-          <div style="font-size:24px;flex-shrink:0;">📍</div>
-          <div>
-            <div style="font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:var(--text-dark);margin-bottom:3px;">Localisation requise</div>
-            <div style="font-size:12px;color:var(--text-soft);line-height:1.5;">L'appli a besoin de ta position pour valider le pointage. Appuie sur le bouton ci-dessous et <strong style="color:var(--forest);">accepte</strong> la demande qui apparaît.</div>
-          </div>
-        </div>
-        <button id="gpsRequestBtn" onclick="requestGPS()" style="margin-top:12px;width:100%;background:var(--forest);color:var(--cream);border:none;border-radius:11px;padding:13px;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;">
-          📡 Autoriser ma localisation
-        </button>
-      </div>
-      <div class="gps-pill pending" id="gpsPill" style="display:none;">📡 Localisation en cours…</div>
-    </div>
-    <button class="btn-confirm" id="confirmBtn" onclick="confirmPointage()" style="opacity:0.4;pointer-events:none;">Valider le pointage</button>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;" onchange="handlePhoto(event)">
+    <button class="gps-btn" id="gpsBtn" onclick="requestGPS()">📡 Autoriser ma localisation</button>
+    <div class="gps-pill pending" id="gpsPill" style="display:none;"></div>
+    <input class="addr-input" id="modalAddr" placeholder="Adresse du chantier…">
+    <button class="confirm-btn" id="confirmBtn" onclick="confirmPointage()" style="opacity:0.45;pointer-events:none;">Valider le pointage</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<script>
-const DB={get:(k,d=null)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
-let currentWorker=null,currentWorkerIdx=null,currentModalType=null,currentGPS=null,currentPhotoData=null;
-function getWorkers(){return DB.get('tp_workers',[])}
-function getEntries(){return DB.get('tp_entries',[])}
-function todayStr(){return new Date().toISOString().split('T')[0]}
-function getWeekStart(o=0){const n=new Date(),m=new Date(n);m.setDate(n.getDate()-((n.getDay()+6)%7)+o*7);m.setHours(0,0,0,0);return m}
-function getWeekEnd(o=0){const s=getWeekStart(o),e=new Date(s);e.setDate(s.getDate()+6);e.setHours(23,59,59,999);return e}
-function formatDate(d){return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}
-function weekLbl(o){const s=getWeekStart(o),e=getWeekEnd(o);return s.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' – '+e.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-// ── WORKER PIN SYSTEM ──
-let pwSelectedIdx=null, pwPinBuffer='', pwCreateBuffer='', pwCreateFirst='';
+const firebaseConfig = {
+  apiKey: "AIzaSyD7TxMgSh0hkuz0jgAFCh3I7SvQkHzorgc",
+  authDomain: "get-your-shift.firebaseapp.com",
+  projectId: "get-your-shift",
+  storageBucket: "get-your-shift.firebasestorage.app",
+  messagingSenderId: "643174916264",
+  appId: "1:643174916264:web:710836c7a07c7140cd229d"
+};
 
-function pwShowStep(n){
-  document.querySelectorAll('#workerPinScreen .pw-step').forEach((s,i)=>s.classList.toggle('active',i===n-1));
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ── STATE ──
+let currentWorker = null;
+let currentWorkerIdx = null;
+let allWorkers = [];
+let allEntries = [];
+let currentModalType = null;
+let currentGPS = null;
+let currentPhoto = null;
+let createFirst = '';
+let calOffset = 0;
+let unsubEntries = null;
+
+// ── UTILS ──
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function formatDate(d) { return new Date(d).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'}); }
+function getWeekStart(offset) {
+  const n = new Date(); const m = new Date(n);
+  m.setDate(n.getDate() - ((n.getDay()+6)%7) + (offset||0)*7);
+  m.setHours(0,0,0,0); return m;
+}
+function getWeekEnd(offset) {
+  const s = getWeekStart(offset); const e = new Date(s);
+  e.setDate(s.getDate()+6); e.setHours(23,59,59,999); return e;
+}
+function weekLbl(offset) {
+  const s = getWeekStart(offset), e = getWeekEnd(offset);
+  return s.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' – '+e.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function setSyncing(on) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncTxt');
+  if (!dot) return;
+  if (on) { dot.classList.add('syncing'); txt.textContent = 'Synchronisation…'; }
+  else { dot.classList.remove('syncing'); txt.textContent = 'Synchronisé ✓'; }
 }
 
-function pwRenderWorkers(){
-  const workers=getWorkers();
-  const grid=document.getElementById('pwWorkerGrid');
-  if(!workers.length){
-    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-soft);font-size:13px;">Aucun profil.<br>Contacte ton responsable.</div>';
+// ── LOAD WORKERS FROM FIREBASE ──
+async function loadWorkers() {
+  const snap = await getDocs(collection(db, 'workers'));
+  allWorkers = [];
+  snap.forEach(d => allWorkers.push({id: d.id, ...d.data()}));
+  allWorkers.sort((a,b) => a.name.localeCompare(b.name));
+}
+
+// ── RENDER WORKER GRID ──
+function renderWorkerGrid() {
+  const grid = document.getElementById('workerGrid');
+  if (!allWorkers.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-soft);font-size:13px;">Aucun profil disponible.<br>Contacte ton responsable.</div>';
     return;
   }
-  grid.innerHTML=workers.map((w,i)=>{
-    const rate=(w.totalDays||0)>=7?250:220;
-    return`<div class="pw-worker-btn" id="pwwb${i}" onclick="pwSelectWorker(${i})">
-      <div class="pw-avatar">${w.name[0].toUpperCase()}</div>
-      <div class="pw-wname">${w.name}</div>
-      <div class="pw-wrate">$${rate}/j</div>
-    </div>`;
+  grid.innerHTML = allWorkers.map((w, i) => {
+    const rate = (w.totalDays||0) >= 7 ? 250 : 220;
+    return '<div class="worker-btn" id="wb'+i+'" onclick="selectWorker('+i+')">' +
+      '<div class="worker-avatar">'+w.name[0].toUpperCase()+'</div>' +
+      '<div class="worker-name-sm">'+w.name+'</div>' +
+      '<div class="worker-rate-sm">$'+rate+'/j</div>' +
+      '</div>';
   }).join('');
 }
 
-function pwSelectWorker(idx){
-  document.querySelectorAll('.pw-worker-btn').forEach(b=>b.classList.remove('selected'));
-  document.getElementById('pwwb'+idx).classList.add('selected');
-  pwSelectedIdx=idx;
-  const workers=getWorkers();
-  const wkr=workers[idx];
-  // Reset buffers
-  pwPinBuffer=''; pwCreateBuffer=''; pwCreateFirst='';
-  updatePwDots(); updatePwCreateDots();
-  if(wkr.pin){
-    document.getElementById('pwPinTitle').textContent='Bonjour '+wkr.name+' 👋';
-    document.getElementById('pwPinSub').textContent='Entre ton code PIN à 4 chiffres';
-    document.getElementById('pwHint').textContent='';
-    document.getElementById('pwError').classList.remove('show');
-    pwShowStep(2);
-    setTimeout(function(){var inp=document.getElementById('pwPinInput');if(inp){inp.value='';for(var i=0;i<4;i++){var el=document.getElementById('pwd'+i);if(el)el.classList.remove('filled');}inp.focus();}},300);
+// ── SELECT WORKER ──
+window.selectWorker = function(idx) {
+  document.querySelectorAll('.worker-btn').forEach(b => b.classList.remove('selected'));
+  const btn = document.getElementById('wb'+idx);
+  if (btn) btn.classList.add('selected');
+  currentWorkerIdx = idx;
+  const w = allWorkers[idx];
+  // Go to PIN step
+  resetPinDots();
+  document.getElementById('pinInput').value = '';
+  document.getElementById('pinTitle').textContent = 'Bonjour '+w.name+' 👋';
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('pinError').classList.remove('show');
+  if (w.pin) {
+    showStep('step2');
   } else {
-    document.getElementById('pwCreateSub').textContent='Choisis un code à 4 chiffres — tu en auras besoin à chaque connexion';
-    pwCreateFirst='';
-    pwShowStep(3);
-    setTimeout(function(){var inp=document.getElementById('pwCreateInput');if(inp){inp.value='';for(var i=0;i<4;i++){var el=document.getElementById('pwcd'+i);if(el)el.classList.remove('filled');}inp.focus();}},300);
+    createFirst = '';
+    document.getElementById('createInput').value = '';
+    document.getElementById('createSub').textContent = 'Choisis un code à 4 chiffres';
+    resetCreateDots();
+    showStep('step3');
   }
+};
+
+function showStep(id) {
+  document.querySelectorAll('.pin-step').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
-function pwSelectContinue(){
-  // kept for safety but flow is now direct tap
-  if(pwSelectedIdx!==null) pwSelectWorker(pwSelectedIdx);
+function resetPinDots() {
+  for (var i=0; i<4; i++) { const el = document.getElementById('pd'+i); if(el) el.classList.remove('filled'); }
+}
+function resetCreateDots() {
+  for (var i=0; i<4; i++) { const el = document.getElementById('cd'+i); if(el) el.classList.remove('filled'); }
+}
+function updateDots(val, prefix) {
+  const digits = String(val||'').replace(/[^0-9]/g,'').slice(0,4);
+  for (var i=0; i<4; i++) { const el = document.getElementById(prefix+i); if(el) el.classList.toggle('filled', i<digits.length); }
+  return digits;
 }
 
-function pwBack(){
-  pwPinBuffer=''; pwCreateBuffer=''; pwCreateFirst='';
-  updatePwDots(); updatePwCreateDots();
-  pwSelectedIdx=null;
-  pwShowStep(1);
-}
+// PIN input listeners
+document.getElementById('pinInput').addEventListener('input', function() {
+  updateDots(this.value, 'pd');
+});
+document.getElementById('createInput').addEventListener('input', function() {
+  updateDots(this.value, 'cd');
+});
 
-function updatePwDots(){
-  for(let i=0;i<4;i++){const el=document.getElementById('pwd'+i);if(el)el.classList.toggle('filled',i<pwPinBuffer.length);}
-}
-function updatePwCreateDots(){
-  for(let i=0;i<4;i++){const el=document.getElementById('pwcd'+i);if(el)el.classList.toggle('filled',i<pwCreateBuffer.length);}
-}
-
-function handleWorkerPin(val){
-  var digits=val.replace(/\D/g,'').slice(0,4);
-  // Update dots
-  for(var i=0;i<4;i++){var el=document.getElementById('pwd'+i);if(el)el.classList.toggle('filled',i<digits.length);}
-  if(digits.length===4){
-    const workers=getWorkers();
-    const wk=workers[pwSelectedIdx];
-    if(digits===wk.pin){
-      document.getElementById('pwPinInput').value='';
-      currentWorkerIdx=pwSelectedIdx;
-      currentWorker=wk;
-      document.getElementById('workerPinScreen').style.display='none';
-      document.getElementById('screen-app').style.display='flex';
-      document.getElementById('screen-app').style.flexDirection='column';
-      initApp();
-    } else {
-      document.getElementById('pwError').classList.add('show');
-      document.getElementById('pwPinInput').value='';
-      for(var i=0;i<4;i++){var el=document.getElementById('pwd'+i);if(el)el.classList.remove('filled');}
-      setTimeout(function(){document.getElementById('pwError').classList.remove('show');},900);
-    }
+// Valider PIN
+document.getElementById('pinValidBtn').addEventListener('click', function() {
+  const digits = updateDots(document.getElementById('pinInput').value, 'pd');
+  const w = allWorkers[currentWorkerIdx];
+  if (digits.length < 4) { showPinError('Entre 4 chiffres'); return; }
+  if (digits === w.pin) {
+    loginWorker(currentWorkerIdx);
+  } else {
+    showPinError('Code incorrect — réessaie');
+    document.getElementById('pinInput').value = '';
+    resetPinDots();
   }
+});
+
+function showPinError(msg) {
+  const el = document.getElementById('pinError');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1500);
 }
 
-function handleWorkerCreate(val){
-  var digits=val.replace(/\D/g,'').slice(0,4);
-  // Update dots
-  for(var i=0;i<4;i++){var el=document.getElementById('pwcd'+i);if(el)el.classList.toggle('filled',i<digits.length);}
-  if(digits.length===4){
-    if(!pwCreateFirst){
-      pwCreateFirst=digits;
-      document.getElementById('pwCreateInput').value='';
-      for(var i=0;i<4;i++){var el=document.getElementById('pwcd'+i);if(el)el.classList.remove('filled');}
-      document.getElementById('pwCreateSub').textContent='Confirme ton code PIN';
-      setTimeout(function(){document.getElementById('pwCreateInput').focus();},200);
-    } else {
-      if(digits===pwCreateFirst){
-        const workers=getWorkers();
-        workers[pwSelectedIdx].pin=digits;
-        DB.set('tp_workers',workers);
-        document.getElementById('pwCreateInput').value='';
-        currentWorkerIdx=pwSelectedIdx;
-        currentWorker=workers[pwSelectedIdx];
-        document.getElementById('workerPinScreen').style.display='none';
-        document.getElementById('screen-app').style.display='flex';
-        document.getElementById('screen-app').style.flexDirection='column';
-        initApp();
-        showToast('✅ PIN créé !');
-      } else {
-        document.getElementById('pwCreateError').textContent='Les codes ne correspondent pas';
-        document.getElementById('pwCreateError').classList.add('show');
-        document.getElementById('pwCreateInput').value='';
-        pwCreateFirst='';
-        for(var i=0;i<4;i++){var el=document.getElementById('pwcd'+i);if(el)el.classList.remove('filled');}
-        document.getElementById('pwCreateSub').textContent='Choisis un code à 4 chiffres';
-        setTimeout(function(){document.getElementById('pwCreateError').classList.remove('show');},2000);
-      }
-    }
-  }
-}
-
-// Keep old functions as stubs to avoid errors
-function pwPin(v){}
-function pwCreate(v){}
-
-// ── PROFIL WORKER ──
-let profCalOffset=0;
-
-function renderProfil(){
-  const workers=getWorkers();
-  const wk=workers[currentWorkerIdx];
-  const entries=getEntries().filter(e=>e.workerIdx===currentWorkerIdx);
-  const rate=(wk.totalDays||0)>=7?250:220;
-
-  document.getElementById('profAvatar').textContent=wk.name[0].toUpperCase();
-  document.getElementById('profName').textContent=wk.name;
-  document.getElementById('profRate').textContent='$'+rate+'/jour · '+(rate===220?'Taux junior':'Taux senior ✓');
-  document.getElementById('profTotalDays').textContent=wk.totalDays||0;
-
-  // Total earned estimate
-  let earned=0;const td=wk.totalDays||0;
-  for(let i=0;i<td;i++) earned+=(i<7?220:250);
-  earned+=(wk.extraAmount||0);
-  document.getElementById('profTotalEarned').textContent='$'+earned.toLocaleString();
-
-  // Unique chantiers
-  const addrs=[...new Set(entries.map(e=>e.address).filter(Boolean))];
-  document.getElementById('profChantiers').textContent=addrs.length;
-
-  // Chantiers list
-  const cl=document.getElementById('profChantiersList');
-  if(!addrs.length){cl.innerHTML='<div style="color:var(--text-soft);font-size:13px;text-align:center;padding:12px;">Aucun chantier encore</div>';}
-  else{
-    const countByAddr={};
-    entries.forEach(e=>{if(e.address&&e.type==='start'){countByAddr[e.address]=(countByAddr[e.address]||0)+1;}});
-    cl.innerHTML=addrs.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--cream2);">
-      <div style="font-size:12px;color:var(--text-dark);flex:1;">${a}</div>
-      <div style="font-size:11px;color:var(--sage);font-weight:500;margin-left:8px;">${countByAddr[a]||1}j</div>
-    </div>`).join('');}
-
-  renderProfCalendar();
-}
-
-function profCalMonth(d){ profCalOffset+=d; renderProfCalendar(); }
-
-function renderProfCalendar(){
-  const now=new Date();
-  const target=new Date(now.getFullYear(), now.getMonth()+profCalOffset, 1);
-  document.getElementById('profCalLabel').textContent=target.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-
-  const entries=getEntries().filter(e=>e.workerIdx===currentWorkerIdx);
-  const workedDates=new Set(entries.map(e=>e.date));
-
-  const firstDay=(target.getDay()+6)%7; // 0=Mon
-  const daysInMonth=new Date(target.getFullYear(),target.getMonth()+1,0).getDate();
-  const todayStr2=new Date().toISOString().split('T')[0];
-
-  let html='';
-  for(let i=0;i<firstDay;i++) html+='<div></div>';
-  for(let d=1;d<=daysInMonth;d++){
-    const dateStr=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const isToday=dateStr===todayStr2;
-    const isWorked=workedDates.has(dateStr);
-    let bg='transparent', color='var(--text-soft)', fw='400', radius='6px';
-    if(isToday&&isWorked){bg='var(--forest)';color='var(--cream)';fw='600';}
-    else if(isToday){bg='var(--sage-light)';color='var(--forest)';fw='600';}
-    else if(isWorked){bg='var(--forest)';color='var(--cream)';fw='500';}
-    html+=`<div style="text-align:center;padding:5px 2px;background:${bg};color:${color};font-weight:${fw};border-radius:${radius};font-size:12px;">${d}</div>`;
-  }
-  document.getElementById('profCalGrid').innerHTML=html;
-}
-
-// ── NOTIFICATION POINTAGE ──
-function checkPointageNotification(){
-  if(!('Notification' in window)) return;
-  const entries=getEntries();
-  const today=new Date().toISOString().split('T')[0];
-  const now=new Date();
-  const hour=now.getHours();
-  // Check if worker has not pointed arrival by 8h30
-  if(hour>=8){
-    const hasStart=entries.find(e=>e.workerIdx===currentWorkerIdx&&e.date===today&&e.type==='start');
-    if(!hasStart){
-      if(Notification.permission==='granted'){
-        new Notification('Get Your Shift ⚠️',{
-          body:'Tu n\'as pas encore pointé ton arrivée aujourd\'hui !',
-          icon:''
-        });
-      } else if(Notification.permission!=='denied'){
-        Notification.requestPermission().then(perm=>{
-          if(perm==='granted'){
-            new Notification('Get Your Shift ⚠️',{
-              body:'Tu n\'as pas encore pointé ton arrivée aujourd\'hui !',
-            });
-          }
-        });
-      }
-    }
-  }
-}
-
-function renderLogin(){ pwRenderWorkers(); }
-function doLogout(){
-  currentWorker=null;currentWorkerIdx=null;pwSelectedIdx=null;pwPinBuffer='';pwCreateBuffer='';pwCreateFirst='';
-  document.getElementById('screen-app').style.display='none';
-  document.getElementById('workerPinScreen').style.display='flex';
-  pwShowStep(1);
-  pwRenderWorkers();
-}
-
-function initApp(){
-  const now=new Date();
-  document.getElementById('hDay').textContent=now.toLocaleDateString('fr-FR',{weekday:'long'}).toUpperCase();
-  document.getElementById('hDate').textContent=now.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
-  const workers=getWorkers();currentWorker=workers[currentWorkerIdx];
-  document.getElementById('hName').textContent=currentWorker.name;
-  const rate=(currentWorker.totalDays||0)>=7?250:220;
-  document.getElementById('hSub').textContent='$'+rate+'/jour · '+(currentWorker.totalDays||0)+' jours au total';
-  renderHome();renderPointage();renderRecap();checkPointageNotification();
-}
-
-function computeWeek(wIdx,o=0){
-  const entries=getEntries(),s=getWeekStart(o),e=getWeekEnd(o);
-  const week=entries.filter(en=>en.workerIdx===wIdx&&new Date(en.date)>=s&&new Date(en.date)<=e);
-  const uniqueDays=[...new Set(week.map(en=>en.date))].sort();
-  return{entries:week,uniqueDays};
-}
-function computeSalary(wIdx,daysCount){
-  const workers=getWorkers(),w=workers[wIdx];
-  const totalBefore=w.totalDays||0;
-  let sal=0,days220=0,days250=0;
-  for(let i=0;i<daysCount;i++){if(totalBefore+i<7){sal+=220;days220++;}else{sal+=250;days250++;}}
-  return{sal,days220,days250};
-}
-
-function renderHome(){
-  const workers=getWorkers(),w=workers[currentWorkerIdx];
-  const totalDays=w.totalDays||0,rate=totalDays>=7?250:220;
-  const daysToUnlock=Math.max(0,7-totalDays);
-  const{uniqueDays}=computeWeek(currentWorkerIdx,0);
-  const weekCount=uniqueDays.length;
-  const weekPct=Math.min(Math.round(weekCount/5*100),999);
-  const{sal}=computeSalary(currentWorkerIdx,weekCount);
-  const{sal:salPlus}=computeSalary(currentWorkerIdx,weekCount+1);
-  const salMax=rate===250?250*5:(Math.min(daysToUnlock,5)*220+Math.max(0,5-daysToUnlock)*250);
-  const potentialExtra=salPlus-sal;
-
-  animateNum('bWeekDays',weekCount);
-  document.getElementById('bWeekPct').textContent=Math.min(weekPct,100)+'%';
-  document.getElementById('bRate').textContent='$'+rate;
-  document.getElementById('bRateNote').textContent=rate===220?'+$30/j dans '+daysToUnlock+'j':'✓ Taux senior';
-  setTimeout(()=>{document.getElementById('bWeekBar').style.width=Math.min(weekCount/5*100,100)+'%';},300);
-  animateNum('salaryCurrent',sal);
-  document.getElementById('salaryMax').textContent='$'+salMax.toLocaleString();
-  document.getElementById('potentialExtra').textContent=potentialExtra;
-  setTimeout(()=>{document.getElementById('salaryBar').style.width=(salMax>0?sal/salMax*100:0)+'%';},400);
-  document.getElementById('unlockBadge').textContent=rate===250?'✓ SENIOR':'J'+Math.min(totalDays,6)+1+'/7';
-  document.getElementById('unlockBadge').className='unlock-badge'+(rate===250?' senior':'');
-  document.getElementById('unlockSub').textContent=rate===250?'Tu es au taux maximum !':'Plus que '+daysToUnlock+' jour(s) pour passer à $250';
-  document.getElementById('unlockCta').innerHTML=rate===250?'Tu es au <strong>taux senior $250</strong> 🏆':'Il te reste <strong>'+daysToUnlock+' jour(s)</strong> à faire';
-  const dots=document.getElementById('levelDots');
-  dots.innerHTML=Array.from({length:7},(_,i)=>{const done=i<totalDays,cur=i===Math.min(totalDays,6)&&totalDays<7;const cls=done?'done':(cur?'current':'');return'<div class="level-dot '+cls+'">'+(i+1)+'</div>';}).join('');
-  setTimeout(()=>{document.getElementById('levelFill').style.width=Math.min(totalDays/7*100,100)+'%';},500);
-  const dayNames=['L','M','M','J','V'];
-  const todayDow=(new Date().getDay()+6)%7;
-  let dotsHtml=dayNames.map((d,i)=>{const worked=i<weekCount,isToday=i===todayDow&&todayDow<5;const cls=worked?(isToday?'today':'worked'):'';return'<div class="day-dot '+cls+'">'+d+'</div>';}).join('');
-  if(weekCount>5){for(let i=5;i<weekCount;i++)dotsHtml+='<div class="day-dot over">+'+(i-4)+'</div>';}
-  document.getElementById('weekDaysDots').innerHTML=dotsHtml;
-  document.getElementById('weekPctBig').textContent=weekPct+'%';
-  document.getElementById('weekPctSub').textContent=weekCount>5?'🔥 Objectif dépassé ! ('+weekCount+' jours)':'de l\'objectif hebdomadaire ('+weekCount+'/5 jours)';
-}
-
-function renderPointage(){
-  const entries=getEntries(),today=todayStr();
-  const todayEntries=entries.filter(e=>e.workerIdx===currentWorkerIdx&&e.date===today);
-  const hasStart=todayEntries.find(e=>e.type==='start'),hasEnd=todayEntries.find(e=>e.type==='end');
-  document.getElementById('btnArrivee').className='pointage-btn'+(hasStart?' done-start':'');
-  document.getElementById('btnDepart').className='pointage-btn'+(hasEnd?' done-end':'');
-  document.getElementById('startStatus').textContent=hasStart?'✓ Pointé '+hasStart.time:'';
-  document.getElementById('endStatus').textContent=hasEnd?'✓ Pointé '+hasEnd.time:'';
-  const myEntries=entries.filter(e=>e.workerIdx===currentWorkerIdx).sort((a,b)=>b.id-a.id).slice(0,20);
-  const hist=document.getElementById('historyList');
-  if(!myEntries.length){hist.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-soft);font-size:13px;">Aucun pointage encore</div>';return;}
-  hist.innerHTML=myEntries.map(e=>'<div class="history-item"><div class="history-dot '+e.type+'"></div><div class="history-info"><div class="history-date">'+formatDate(e.date)+' · '+e.time+'</div><div class="history-addr">'+e.address+'</div><div class="history-type">'+(e.type==='start'?'🌅 Arrivée':'🌇 Départ')+'</div></div>'+(e.photo?'<img src="'+e.photo+'" class="history-thumb" alt="photo">':'')+'</div>').join('');
-}
-
-function renderRecap(){
-  const workers=getWorkers(),w=workers[currentWorkerIdx];
-  const{uniqueDays}=computeWeek(currentWorkerIdx,0);
-  const{sal}=computeSalary(currentWorkerIdx,uniqueDays.length);
-  const paid=w.paidWeeks&&w.paidWeeks[weekLbl(0)];
-  document.getElementById('recapTotal').textContent=sal.toLocaleString();
-  document.getElementById('recapStatus').textContent=paid?'✓ Payé':(uniqueDays.length?'⏳ En attente de paiement':'Aucun jour cette semaine');
-  document.getElementById('recapStatus').className='potential-badge'+(paid?' paid':'');
-  const entries=getEntries(),ws=getWeekStart(0),we=getWeekEnd(0);
-  const wkEntries=entries.filter(e=>e.workerIdx===currentWorkerIdx&&new Date(e.date)>=ws&&new Date(e.date)<=we);
-  const byDay={};wkEntries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
-  const totalBefore=w.totalDays||0;
-  const recapDays=document.getElementById('recapDaysList');
-  if(!uniqueDays.length){recapDays.innerHTML='<div style="text-align:center;padding:16px;color:var(--text-soft);font-size:13px;">Aucun jour cette semaine</div>';}
-  else{recapDays.innerHTML=uniqueDays.map((d,i)=>{const rate=(totalBefore-uniqueDays.length+i)<7?220:250;return'<div class="recap-day"><div class="recap-day-date">'+formatDate(d)+'</div><div class="recap-day-addr">'+(byDay[d]?.[0]?.address||'—')+'</div><div class="recap-day-amount rate-'+rate+'">$'+rate+'</div></div>';}).join('');}
-  const hist=document.getElementById('recapHistory');
-  const allEntries=getEntries().filter(e=>e.workerIdx===currentWorkerIdx);
-  let html='';
-  for(let off=-1;off>=-8;off--){const s=getWeekStart(off),e=getWeekEnd(off);const wkE=allEntries.filter(en=>new Date(en.date)>=s&&new Date(en.date)<=e);const wkD=[...new Set(wkE.map(en=>en.date))];if(!wkD.length)continue;const{sal:wSal}=computeSalary(currentWorkerIdx,wkD.length);const isPaid=w.paidWeeks&&w.paidWeeks[weekLbl(off)];html+='<div class="recap-day"><div class="recap-day-date" style="min-width:90px;font-size:11px;">'+weekLbl(off)+'</div><div class="recap-day-addr">'+wkD.length+'j travaillé(s)</div><div style="display:flex;align-items:center;gap:8px;"><div class="recap-day-amount rate-250">$'+wSal+'</div><div class="paid-badge '+(isPaid?'paid':'')+'">'+( isPaid?'✓ Payé':'…')+'</div></div></div>';}
-  hist.innerHTML=html||'<div style="color:var(--text-soft);font-size:13px;padding:16px 0;">Aucune semaine précédente</div>';
-}
-
-function openModal(type){
-  currentModalType=type;currentPhotoData=null;currentGPS=null;
-  document.getElementById('modalTitle').textContent=type==='start'?'🌅 Pointer l\'arrivée':'🌇 Pointer le départ';
-  document.getElementById('modalSub').textContent=type==='start'?'Photo du chantier à ton arrivée':'Photo du chantier à ton départ';
-  document.getElementById('photoZone').innerHTML='<div class="photo-zone-icon">📸</div><div class="photo-zone-text">Appuyer pour prendre une photo</div>';
-  document.getElementById('photoZone').classList.remove('has-photo');
-  document.getElementById('photoFileInput').value='';
-  document.getElementById('modalAddr').value='';
-  // Reset GPS step
-  const pill=document.getElementById('gpsPill');
-  pill.style.display='none';
-  pill.className='gps-pill pending';
-  pill.textContent='📡 Localisation en cours…';
-  const gpsBtn=document.getElementById('gpsRequestBtn');
-  gpsBtn.style.display='flex';
-  gpsBtn.disabled=false;
-  gpsBtn.innerHTML='📡 Autoriser ma localisation';
-  // Lock confirm until GPS acquired
-  const confirmBtn=document.getElementById('confirmBtn');
-  confirmBtn.style.opacity='0.4';
-  confirmBtn.style.pointerEvents='none';
-  document.getElementById('modalOverlay').classList.add('open');
-}
-document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById('modalOverlay').classList.remove('open');});
-
-function handlePhoto(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{currentPhotoData=ev.target.result;const z=document.getElementById('photoZone');z.innerHTML='<img src="'+currentPhotoData+'" style="width:100%;height:160px;object-fit:cover;border-radius:14px;">';z.classList.add('has-photo');};r.readAsDataURL(file);}
-
-function requestGPS(){
-  const gpsBtn=document.getElementById('gpsRequestBtn');
-  const pill=document.getElementById('gpsPill');
-  if(!navigator.geolocation){
-    pill.style.display='flex';
-    pill.className='gps-pill err';
-    pill.textContent='❌ GPS non supporté sur cet appareil';
-    gpsBtn.style.display='none';
+// Create PIN
+document.getElementById('createValidBtn').addEventListener('click', async function() {
+  const digits = updateDots(document.getElementById('createInput').value, 'cd');
+  if (digits.length < 4) {
+    const el = document.getElementById('createError');
+    el.textContent = 'Entre 4 chiffres'; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1500);
     return;
   }
-  // Show loading state on button
-  gpsBtn.disabled=true;
-  gpsBtn.innerHTML='⏳ En cours…';
-  pill.style.display='flex';
-  pill.className='gps-pill pending';
-  pill.textContent='📡 Récupération de ta position…';
-  navigator.geolocation.getCurrentPosition(
-    function(p){
-      currentGPS={lat:p.coords.latitude.toFixed(5),lng:p.coords.longitude.toFixed(5),acc:Math.round(p.coords.accuracy)};
-      pill.className='gps-pill ok';
-      pill.textContent='✅ Position obtenue (±'+currentGPS.acc+'m)';
-      gpsBtn.style.display='none';
-      // Unlock confirm button
-      const confirmBtn=document.getElementById('confirmBtn');
-      confirmBtn.style.opacity='1';
-      confirmBtn.style.pointerEvents='auto';
-    },
-    function(err){
-      pill.className='gps-pill err';
-      if(err.code===1){
-        pill.textContent='❌ Accès refusé — va dans Réglages > Safari > Localisation';
-      } else if(err.code===2){
-        pill.textContent='❌ Position indisponible — vérifie ton GPS';
-      } else {
-        pill.textContent='❌ Délai dépassé — réessaie';
-      }
-      gpsBtn.disabled=false;
-      gpsBtn.innerHTML='🔄 Réessayer';
-    },
-    {enableHighAccuracy:true, timeout:15000, maximumAge:0}
-  );
-}
-
-function confirmPointage(){
-  const addr=document.getElementById('modalAddr').value.trim();
-  if(!currentPhotoData){showToast('📸 Photo obligatoire');return;}
-  if(!currentGPS){showToast('📡 GPS requis');return;}
-  if(!addr){showToast('📍 Adresse obligatoire');return;}
-  const today=todayStr(),entries=getEntries();
-  const existing=entries.find(e=>e.workerIdx===currentWorkerIdx&&e.date===today&&e.type===currentModalType);
-  if(existing){showToast('Déjà pointé aujourd\'hui !');return;}
-  const entry={id:Date.now(),workerIdx:currentWorkerIdx,workerName:currentWorker.name,type:currentModalType,date:today,address:addr,gps:currentGPS,photo:currentPhotoData,time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})};
-  entries.push(entry);DB.set('tp_entries',entries);
-  if(currentModalType==='start'){
-    const workers=getWorkers();
-    const alreadyCounted=entries.filter(e=>e.workerIdx===currentWorkerIdx&&e.date===today&&e.type==='start').length===1;
-    if(alreadyCounted){workers[currentWorkerIdx].totalDays=(workers[currentWorkerIdx].totalDays||0)+1;DB.set('tp_workers',workers);currentWorker=workers[currentWorkerIdx];}
+  if (!createFirst) {
+    createFirst = digits;
+    document.getElementById('createInput').value = '';
+    resetCreateDots();
+    document.getElementById('createSub').textContent = 'Confirme ton code PIN';
+  } else {
+    if (digits === createFirst) {
+      // Save PIN to Firebase
+      const w = allWorkers[currentWorkerIdx];
+      await setDoc(doc(db, 'workers', w.id), { pin: digits }, { merge: true });
+      allWorkers[currentWorkerIdx].pin = digits;
+      loginWorker(currentWorkerIdx);
+      showToast('✅ PIN créé !');
+    } else {
+      document.getElementById('createInput').value = '';
+      resetCreateDots();
+      createFirst = '';
+      document.getElementById('createSub').textContent = 'Choisis un code à 4 chiffres';
+      const el = document.getElementById('createError');
+      el.textContent = 'Codes différents — réessaie';
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2000);
+    }
   }
-  document.getElementById('modalOverlay').classList.remove('open');
-  showToast('✅ '+(currentModalType==='start'?'Arrivée':'Départ')+' enregistré !');
+});
+
+// Back buttons
+document.getElementById('backBtn').addEventListener('click', () => { showStep('step1'); });
+document.getElementById('backBtn2').addEventListener('click', () => { showStep('step1'); });
+
+// ── LOGIN ──
+function loginWorker(idx) {
+  currentWorker = allWorkers[idx];
+  document.getElementById('pinScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'flex';
+  document.getElementById('appScreen').style.flexDirection = 'column';
   initApp();
 }
 
-function switchTab(id){
-  document.querySelectorAll('.tab-item').forEach((t,i)=>t.classList.toggle('active',['home','pointage','galerie','recap','profil'][i]===id));
-  document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('active',c.id==='tab-'+id));
-  if(id==='galerie') renderWorkerGallery();
-  if(id==='profil') renderProfil();
-}
-function animateNum(id,target){const el=document.getElementById(id);const start=parseInt(el.textContent)||0;const dur=800;const t0=performance.now();const tick=now=>{const p=Math.min((now-t0)/dur,1);const ease=1-Math.pow(1-p,3);el.textContent=Math.round(start+(target-start)*ease);if(p<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  if (unsubEntries) { unsubEntries(); unsubEntries = null; }
+  currentWorker = null;
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('pinScreen').style.display = 'flex';
+  showStep('step1');
+  document.querySelectorAll('.worker-btn').forEach(b => b.classList.remove('selected'));
+});
 
-// ── PHOTO COMPRESSION ──
-function compressPhoto(dataUrl, maxW=800, quality=0.72){
-  return new Promise(resolve=>{
-    const img=new Image();
-    img.onload=()=>{
-      const canvas=document.createElement('canvas');
-      let {width:w,height:h}=img;
-      if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
-      canvas.width=w; canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      resolve(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.src=dataUrl;
+// ── INIT APP ──
+function initApp() {
+  const now = new Date();
+  document.getElementById('hDay').textContent = now.toLocaleDateString('fr-FR',{weekday:'long'}).toUpperCase();
+  document.getElementById('hDate').textContent = now.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('hName').textContent = currentWorker.name;
+  const rate = (currentWorker.totalDays||0) >= 7 ? 250 : 220;
+  document.getElementById('hSub').textContent = '$'+rate+'/jour · '+(currentWorker.totalDays||0)+' jours au total';
+
+  // Live listener on entries
+  if (unsubEntries) unsubEntries();
+  const q = query(collection(db, 'entries'), where('workerId','==',currentWorker.id));
+  unsubEntries = onSnapshot(q, snap => {
+    allEntries = [];
+    snap.forEach(d => allEntries.push({id: d.id, ...d.data()}));
+    renderAll();
+    setSyncing(false);
   });
 }
 
-// Override handlePhoto to compress before saving
-const _origHandlePhoto=handlePhoto;
-function handlePhoto(e){
-  const file=e.target.files[0]; if(!file)return;
-  const r=new FileReader();
-  r.onload=async ev=>{
-    const compressed=await compressPhoto(ev.target.result);
-    currentPhotoData=compressed;
-    const z=document.getElementById('photoZone');
-    z.innerHTML='<img src="'+compressed+'" style="width:100%;height:160px;object-fit:cover;border-radius:14px;">';
-    z.classList.add('has-photo');
-  };
-  r.readAsDataURL(file);
+// ── RENDER ALL TABS ──
+function renderAll() {
+  renderHome();
+  renderPointage();
+  renderRecap();
 }
 
-// ── PHOTO CLEANUP (14 days) ──
-function cleanOldPhotos(){
-  const entries=getEntries();
-  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-14);
-  let changed=false;
-  entries.forEach(e=>{
-    if(e.photo && new Date(e.date)<cutoff){
-      e.photo=null; // remove photo data but keep entry
-      changed=true;
-    }
-  });
-  if(changed) DB.set('tp_entries',entries);
+// ── COMPUTE WEEK DAYS ──
+function getWeekEntries(offset) {
+  const s = getWeekStart(offset), e = getWeekEnd(offset);
+  const week = allEntries.filter(en => { const d = new Date(en.date); return d>=s && d<=e; });
+  return [...new Set(week.map(en=>en.date))].sort();
 }
 
-// ── WORKER GALLERY ──
-function renderWorkerGallery(){
-  cleanOldPhotos();
-  const entries=getEntries().filter(e=>e.workerIdx===currentWorkerIdx&&e.photo);
-  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-14);
-  const recent=entries.filter(e=>new Date(e.date)>=cutoff).sort((a,b)=>b.id-a.id);
+function computeSalary(daysCount) {
+  const totalBefore = (currentWorker.totalDays||0) - daysCount;
+  let sal=0, d220=0, d250=0;
+  for (let i=0; i<daysCount; i++) {
+    if (totalBefore+i < 7) { sal+=220; d220++; } else { sal+=250; d250++; }
+  }
+  return {sal, d220, d250};
+}
 
-  const arrives=recent.filter(e=>e.type==='start');
-  const departs=recent.filter(e=>e.type==='end');
+// ── HOME ──
+function renderHome() {
+  const totalDays = currentWorker.totalDays||0;
+  const rate = totalDays >= 7 ? 250 : 220;
+  const daysToUnlock = Math.max(0, 7-totalDays);
+  const weekDays = getWeekEntries(0);
+  const weekCount = weekDays.length;
+  const weekPct = Math.min(Math.round(weekCount/5*100),999);
+  const {sal} = computeSalary(weekCount);
+  const {sal:salPlus} = computeSalary(weekCount+1);
+  const salMax = rate===250 ? 250*5 : (Math.min(daysToUnlock,5)*220+Math.max(0,5-daysToUnlock)*250);
 
-  function renderGrid(items, containerId){
-    const el=document.getElementById(containerId);
-    if(!items.length){
-      el.innerHTML='<div class="gallery-empty" style="grid-column:1/-1"><div class="gallery-empty-icon">📭</div>Aucune photo</div>';
-      return;
-    }
-    el.innerHTML=items.map(e=>`
-      <div class="gallery-thumb-wrap">
-        <img src="${e.photo}" class="gallery-thumb" onclick="viewFullPhoto('${e.id}')" alt="photo">
-        <div class="gallery-date-badge">${formatDate(e.date)} ${e.time}</div>
-      </div>`).join('');
+  document.getElementById('bWeekDays').textContent = weekCount;
+  document.getElementById('bWeekPct').textContent = Math.min(weekPct,100)+'%';
+  document.getElementById('bRate').textContent = '$'+rate;
+  document.getElementById('bRateNote').textContent = rate===220 ? '+$30/j dans '+daysToUnlock+'j' : '✓ Taux senior';
+  setTimeout(() => { document.getElementById('bWeekBar').style.width = Math.min(weekCount/5*100,100)+'%'; }, 200);
+
+  document.getElementById('salaryCurrent').textContent = sal.toLocaleString();
+  document.getElementById('salaryMax').textContent = '$'+salMax.toLocaleString();
+  document.getElementById('potExtra').textContent = salPlus-sal;
+  setTimeout(() => { document.getElementById('salaryBar').style.width = (salMax>0 ? sal/salMax*100 : 0)+'%'; }, 300);
+
+  // Unlock
+  document.getElementById('unlockBadge').textContent = rate===250 ? '✓ SENIOR' : 'J'+(Math.min(totalDays,6)+1)+'/7';
+  document.getElementById('unlockBadge').className = 'unlock-badge'+(rate===250?' senior':'');
+  document.getElementById('unlockSub').textContent = rate===250 ? 'Tu es au taux maximum !' : 'Plus que '+daysToUnlock+' jour(s) pour $250';
+  document.getElementById('unlockCta').innerHTML = rate===250 ? 'Tu es au <strong>taux senior $250</strong> 🏆' : 'Il te reste <strong>'+daysToUnlock+' jour(s)</strong> à faire';
+
+  let dotsHtml = '';
+  for (let i=0; i<7; i++) {
+    const done = i<totalDays, cur = i===Math.min(totalDays,6)&&totalDays<7;
+    dotsHtml += '<div class="ldot'+(done?' done':cur?' current':'')+'">'+( i+1)+'</div>';
+  }
+  document.getElementById('levelDots').innerHTML = dotsHtml;
+  setTimeout(() => { document.getElementById('levelFill').style.width = Math.min(totalDays/7*100,100)+'%'; }, 400);
+
+  const dayNames = ['L','M','M','J','V'];
+  const todayDow = (new Date().getDay()+6)%7;
+  let wdHtml = dayNames.map((d,i) => {
+    const worked = i<weekCount, isToday = i===todayDow&&todayDow<5;
+    const cls = worked ? (isToday?'today':'worked') : '';
+    return '<div class="day-dot '+cls+'">'+d+'</div>';
+  }).join('');
+  if (weekCount>5) for(let i=5;i<weekCount;i++) wdHtml += '<div class="day-dot over">+'+(i-4)+'</div>';
+  document.getElementById('weekDaysDots').innerHTML = wdHtml;
+  document.getElementById('weekPctBig').textContent = weekPct+'%';
+  document.getElementById('weekPctSub').textContent = weekCount>5 ? '🔥 Objectif dépassé ! ('+weekCount+' jours)' : 'de l\'objectif hebdomadaire ('+weekCount+'/5 jours)';
+}
+
+// ── POINTAGE ──
+function renderPointage() {
+  const today = todayStr();
+  const todayEntries = allEntries.filter(e => e.date===today);
+  const hasStart = todayEntries.find(e => e.type==='start');
+  const hasEnd = todayEntries.find(e => e.type==='end');
+
+  document.getElementById('btnArrivee').className = 'ptg-btn'+(hasStart?' done-start':'');
+  document.getElementById('btnDepart').className = 'ptg-btn'+(hasEnd?' done-end':'');
+  document.getElementById('startStatus').textContent = hasStart ? '✓ '+hasStart.time : '';
+  document.getElementById('endStatus').textContent = hasEnd ? '✓ '+hasEnd.time : '';
+
+  const recent = [...allEntries].sort((a,b) => b.timestamp - a.timestamp).slice(0,20);
+  const hist = document.getElementById('historyList');
+  if (!recent.length) { hist.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-soft);font-size:13px;">Aucun pointage encore</div>'; return; }
+  hist.innerHTML = recent.map(e =>
+    '<div class="hist-item">' +
+    '<div class="hist-dot '+e.type+'"></div>' +
+    '<div class="hist-info"><div class="hist-date">'+formatDate(e.date)+' · '+e.time+'</div>' +
+    '<div class="hist-addr">'+(e.address||'')+'</div>' +
+    '<div class="hist-type">'+(e.type==='start'?'🌅 Arrivée':'🌇 Départ')+'</div></div>' +
+    (e.photo ? '<img src="'+e.photo+'" class="hist-thumb">' : '') +
+    '</div>'
+  ).join('');
+
+  // Gallery
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-14);
+  const recent14 = allEntries.filter(e => e.photo && new Date(e.date)>=cutoff).sort((a,b)=>b.timestamp-a.timestamp);
+  renderGalGrid(recent14.filter(e=>e.type==='start'), 'galArrivee');
+  renderGalGrid(recent14.filter(e=>e.type==='end'), 'galDepart');
+}
+
+function renderGalGrid(items, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!items.length) { el.innerHTML = '<div class="gal-empty">Aucune photo</div>'; return; }
+  el.innerHTML = items.map(e =>
+    '<div class="gal-wrap"><img src="'+e.photo+'" class="gal-thumb" onclick="viewPhoto(\''+e.id+'\')" alt="photo">' +
+    '<div class="gal-date">'+formatDate(e.date)+' '+e.time+'</div></div>'
+  ).join('');
+}
+
+window.viewPhoto = function(entryId) {
+  const entry = allEntries.find(e => e.id===entryId);
+  if (!entry||!entry.photo) return;
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+  d.innerHTML = '<img src="'+entry.photo+'" style="max-width:100%;max-height:72dvh;object-fit:contain;border-radius:12px;">' +
+    '<div style="color:white;font-size:13px;margin-top:14px;text-align:center;">'+(entry.type==='start'?'🌅 Arrivée':'🌇 Départ')+' · '+formatDate(entry.date)+' à '+entry.time+'</div>' +
+    '<div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:3px;">📍 '+(entry.gps?entry.gps.lat+', '+entry.gps.lng:'GPS non disponible')+'</div>' +
+    '<button onclick="this.parentNode.remove()" style="margin-top:18px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:10px 28px;border-radius:24px;font-size:14px;cursor:pointer;">Fermer</button>';
+  document.body.appendChild(d);
+};
+
+// ── RECAP ──
+function renderRecap() {
+  const weekDays = getWeekEntries(0);
+  const {sal} = computeSalary(weekDays.length);
+  document.getElementById('recapTotal').textContent = sal.toLocaleString();
+
+  const isPaid = currentWorker.paidWeeks && currentWorker.paidWeeks[weekLbl(0)];
+  const statusEl = document.getElementById('recapStatus');
+  statusEl.textContent = isPaid ? '✓ Payé' : (weekDays.length ? '⏳ En attente' : 'Aucun jour cette semaine');
+  statusEl.className = 'paid-badge'+(isPaid?' paid':'');
+
+  // Day detail
+  const totalBefore = (currentWorker.totalDays||0)-weekDays.length;
+  const daysList = document.getElementById('recapDaysList');
+  if (!weekDays.length) { daysList.innerHTML = '<div style="color:var(--text-soft);font-size:13px;text-align:center;padding:12px;">Aucun jour cette semaine</div>'; }
+  else {
+    const wkEntries = allEntries.filter(e => { const d=new Date(e.date); return d>=getWeekStart(0)&&d<=getWeekEnd(0); });
+    const byDay = {};
+    wkEntries.forEach(e => { if(!byDay[e.date]) byDay[e.date]=[]; byDay[e.date].push(e); });
+    daysList.innerHTML = weekDays.map((d,i) => {
+      const rate = (totalBefore+i)<7 ? 220 : 250;
+      const addr = byDay[d]&&byDay[d][0] ? byDay[d][0].address : '—';
+      return '<div class="recap-day"><div class="recap-day-date">'+formatDate(d)+'</div><div class="recap-day-addr">'+addr+'</div><div class="recap-day-amt r'+rate+'">$'+rate+'</div></div>';
+    }).join('');
   }
 
-  renderGrid(arrives,'wGallerieArrivee');
-  renderGrid(departs,'wGallerieDepart');
+  // History
+  const hist = document.getElementById('recapHistory');
+  let histHtml = '';
+  for (let off=-1; off>=-8; off--) {
+    const wkD = getWeekEntries(off);
+    if (!wkD.length) continue;
+    const {sal:wSal} = computeSalary(wkD.length);
+    const ip = currentWorker.paidWeeks && currentWorker.paidWeeks[weekLbl(off)];
+    histHtml += '<div class="recap-day"><div class="recap-day-date" style="min-width:90px;font-size:11px;">'+weekLbl(off)+'</div>' +
+      '<div class="recap-day-addr">'+wkD.length+'j</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;"><div class="recap-day-amt r250">$'+wSal+'</div><div class="paid-badge '+(ip?'paid':'')+'">'+( ip?'✓ Payé':'…')+'</div></div></div>';
+  }
+  hist.innerHTML = histHtml || '<div style="color:var(--text-soft);font-size:13px;padding:12px 0;">Aucune semaine précédente</div>';
 }
 
-// Full screen photo viewer
-function viewFullPhoto(entryId){
-  const entries=getEntries();
-  const entry=entries.find(e=>String(e.id)===String(entryId)||e.id===entryId);
-  if(!entry||!entry.photo) return;
-  const d=document.createElement('div');
-  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
-  d.innerHTML=`
-    <img src="${entry.photo}" style="max-width:100%;max-height:75dvh;object-fit:contain;border-radius:12px;">
-    <div style="color:white;font-size:13px;margin-top:14px;text-align:center;opacity:0.8;">${entry.workerName} · ${entry.type==='start'?'🌅 Arrivée':'🌇 Départ'} · ${formatDate(entry.date)} à ${entry.time}</div>
-    <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:4px;">📍 ${entry.gps?entry.gps.lat+', '+entry.gps.lng:'GPS non disponible'}</div>
-    <button onclick="this.parentNode.remove()" style="margin-top:20px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:10px 28px;border-radius:24px;font-size:14px;cursor:pointer;">Fermer</button>`;
-  document.body.appendChild(d);
+// ── PROFIL ──
+function renderProfil() {
+  const totalDays = currentWorker.totalDays||0;
+  const rate = totalDays>=7?250:220;
+  document.getElementById('profAvatar').textContent = currentWorker.name[0].toUpperCase();
+  document.getElementById('profName').textContent = currentWorker.name;
+  document.getElementById('profRate').textContent = '$'+rate+'/jour · '+(rate===220?'Taux junior':'Taux senior ✓');
+  document.getElementById('profDays').textContent = totalDays;
+  let earned=0; for(let i=0;i<totalDays;i++) earned+=(i<7?220:250);
+  document.getElementById('profEarned').textContent = '$'+earned.toLocaleString();
+  const addrs = [...new Set(allEntries.filter(e=>e.address).map(e=>e.address))];
+  document.getElementById('profChantiers').textContent = addrs.length;
+  const countByAddr = {};
+  allEntries.forEach(e=>{if(e.address&&e.type==='start') countByAddr[e.address]=(countByAddr[e.address]||0)+1;});
+  const cl = document.getElementById('chantiersList');
+  if (!addrs.length) { cl.innerHTML='<div style="color:var(--text-soft);font-size:13px;text-align:center;padding:12px;">Aucun chantier encore</div>'; }
+  else cl.innerHTML = addrs.map(a=>'<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--cream2);"><div style="font-size:12px;color:var(--text-dark);flex:1;">'+a+'</div><div style="font-size:11px;color:var(--sage);font-weight:500;">'+(countByAddr[a]||1)+'j</div></div>').join('');
+  renderCalendar();
 }
 
-renderLogin();
+function renderCalendar() {
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth()+calOffset, 1);
+  document.getElementById('calLabel').textContent = target.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const workedDates = new Set(allEntries.map(e=>e.date));
+  const firstDay = (target.getDay()+6)%7;
+  const daysInMonth = new Date(target.getFullYear(),target.getMonth()+1,0).getDate();
+  const todayStr2 = new Date().toISOString().split('T')[0];
+  const names = ['L','M','M','J','V','S','D'];
+  document.getElementById('calDayNames').innerHTML = names.map(d=>'<div class="cal-day-name">'+d+'</div>').join('');
+  let html = '';
+  for(let i=0;i<firstDay;i++) html+='<div></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isToday=ds===todayStr2, isWorked=workedDates.has(ds);
+    let cls='cal-cell';
+    if(isToday&&isWorked) cls+=' worked';
+    else if(isToday) cls+=' today';
+    else if(isWorked) cls+=' worked';
+    html+='<div class="'+cls+'">'+d+'</div>';
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+window.calMonth = function(d) { calOffset+=d; renderCalendar(); };
+
+// ── TABS ──
+window.switchTab = function(id) {
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab'+id.charAt(0).toUpperCase()+id.slice(1)).classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if (id==='profil') renderProfil();
+  if (id==='galerie') renderPointage();
+};
+
+// ── MODAL POINTAGE ──
+window.openModal = function(type) {
+  currentModalType = type; currentGPS = null; currentPhoto = null;
+  document.getElementById('modalTitle').textContent = type==='start' ? '🌅 Pointer l\'arrivée' : '🌇 Pointer le départ';
+  document.getElementById('modalSub').textContent = type==='start' ? 'Photo à ton arrivée sur le chantier' : 'Photo à ton départ du chantier';
+  document.getElementById('photoZone').innerHTML = '<div class="pz-icon">📸</div><div class="pz-txt">Prendre une photo</div>';
+  document.getElementById('photoZone').classList.remove('has');
+  document.getElementById('photoInput').value = '';
+  document.getElementById('modalAddr').value = '';
+  document.getElementById('gpsPill').style.display = 'none';
+  document.getElementById('gpsBtn').style.display = 'block';
+  document.getElementById('gpsBtn').textContent = '📡 Autoriser ma localisation';
+  document.getElementById('gpsBtn').disabled = false;
+  document.getElementById('confirmBtn').style.opacity = '0.45';
+  document.getElementById('confirmBtn').style.pointerEvents = 'none';
+  document.getElementById('modalOverlay').classList.add('open');
+};
+
+document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+
+window.handlePhoto = function(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = async ev => {
+    const compressed = await compressPhoto(ev.target.result);
+    currentPhoto = compressed;
+    const z = document.getElementById('photoZone');
+    z.innerHTML = '<img src="'+compressed+'" style="width:100%;height:150px;object-fit:cover;border-radius:12px;">';
+    z.classList.add('has');
+  };
+  r.readAsDataURL(file);
+};
+
+async function compressPhoto(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let {width:w, height:h} = img;
+      const maxW = 800;
+      if (w>maxW) { h=Math.round(h*maxW/w); w=maxW; }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    img.src = dataUrl;
+  });
+}
+
+window.requestGPS = function() {
+  const btn = document.getElementById('gpsBtn');
+  const pill = document.getElementById('gpsPill');
+  if (!navigator.geolocation) {
+    pill.style.display='flex'; pill.className='gps-pill err'; pill.textContent='❌ GPS non supporté';
+    return;
+  }
+  btn.disabled=true; btn.textContent='⏳ En cours…';
+  pill.style.display='flex'; pill.className='gps-pill pending'; pill.textContent='📡 Localisation en cours…';
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      currentGPS = {lat:p.coords.latitude.toFixed(5), lng:p.coords.longitude.toFixed(5), acc:Math.round(p.coords.accuracy)};
+      pill.className='gps-pill ok'; pill.textContent='✅ Position (±'+currentGPS.acc+'m)';
+      btn.style.display='none';
+      if (currentPhoto) { document.getElementById('confirmBtn').style.opacity='1'; document.getElementById('confirmBtn').style.pointerEvents='auto'; }
+    },
+    err => {
+      pill.className='gps-pill err';
+      pill.textContent = err.code===1 ? '❌ Refusé — Réglages > Safari > Localisation' : '❌ Erreur GPS — réessaie';
+      btn.disabled=false; btn.textContent='🔄 Réessayer';
+    },
+    {enableHighAccuracy:true, timeout:15000, maximumAge:0}
+  );
+};
+
+// Watch for both photo + GPS to unlock confirm
+const photoInput = document.getElementById('photoInput');
+const origHandle = window.handlePhoto;
+window.handlePhoto = function(e) {
+  origHandle(e);
+  setTimeout(() => {
+    if (currentGPS) { document.getElementById('confirmBtn').style.opacity='1'; document.getElementById('confirmBtn').style.pointerEvents='auto'; }
+  }, 500);
+};
+
+window.confirmPointage = async function() {
+  const addr = document.getElementById('modalAddr').value.trim();
+  if (!currentPhoto) { showToast('📸 Photo obligatoire'); return; }
+  if (!currentGPS) { showToast('📡 GPS requis'); return; }
+  if (!addr) { showToast('📍 Adresse obligatoire'); return; }
+
+  const today = todayStr();
+  const existing = allEntries.find(e => e.date===today && e.type===currentModalType);
+  if (existing) { showToast('Déjà pointé aujourd\'hui !'); return; }
+
+  setSyncing(true);
+  const entryId = currentWorker.id+'_'+currentModalType+'_'+today;
+  const entry = {
+    workerId: currentWorker.id,
+    workerName: currentWorker.name,
+    type: currentModalType,
+    date: today,
+    address: addr,
+    gps: currentGPS,
+    photo: currentPhoto,
+    time: new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
+    timestamp: Date.now()
+  };
+
+  try {
+    await setDoc(doc(db, 'entries', entryId), entry);
+    // If start — increment totalDays
+    if (currentModalType==='start') {
+      const newTotal = (currentWorker.totalDays||0)+1;
+      await setDoc(doc(db,'workers',currentWorker.id), {totalDays:newTotal}, {merge:true});
+      currentWorker.totalDays = newTotal;
+      // Update allWorkers too
+      const wi = allWorkers.findIndex(w=>w.id===currentWorker.id);
+      if(wi>=0) allWorkers[wi].totalDays = newTotal;
+    }
+    document.getElementById('modalOverlay').classList.remove('open');
+    showToast('✅ '+(currentModalType==='start'?'Arrivée':'Départ')+' enregistré !');
+  } catch(err) {
+    showToast('❌ Erreur de synchronisation');
+    setSyncing(false);
+  }
+};
+
+// ── BOOT ──
+async function boot() {
+  try {
+    await loadWorkers();
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('pinScreen').style.display = 'flex';
+    renderWorkerGrid();
+  } catch(err) {
+    document.getElementById('loadingScreen').innerHTML = '<div style="color:white;text-align:center;padding:32px;font-family:sans-serif;">Erreur de connexion.<br>Vérifie ta connexion internet.</div>';
+  }
+}
+
+boot();
 </script>
 </body>
 </html>
