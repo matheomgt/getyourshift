@@ -326,6 +326,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <div class="wnav-lbl" id="ptgWeekLbl"></div>
       <button class="wnav-btn" onclick="changePtgWeek(1)">›</button>
     </div>
+    <button class="btn btn-forest" onclick="openManualModal()" style="margin-bottom:12px;">+ Ajouter un pointage manuellement</button>
     <div class="card">
       <div class="card-title">Tous les pointages</div>
       <div id="ptgList"></div>
@@ -441,6 +442,41 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
   </div>
 </div>
 
+<!-- MANUAL ENTRY MODAL -->
+<div class="modal-overlay" id="manualModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Ajouter un jour</div>
+    <div class="modal-sub">Crée un pointage manuellement pour un worker</div>
+
+    <label class="inp-lbl">Worker</label>
+    <select class="inp" id="manualWorker" style="-webkit-appearance:none;"></select>
+
+    <label class="inp-lbl">Date</label>
+    <input class="inp" id="manualDate" type="date">
+
+    <label class="inp-lbl">Adresse du chantier</label>
+    <input class="inp" id="manualAddr" placeholder="ex: 1080 Oxford Falls Rd">
+
+    <label class="inp-lbl">Type</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div id="manualBtnStart" onclick="selectManualType('start')" style="padding:12px;border-radius:12px;border:2px solid var(--forest);background:rgba(45,74,45,0.06);text-align:center;cursor:pointer;font-size:13px;font-weight:500;color:var(--forest);">🌅 Arrivée</div>
+      <div id="manualBtnEnd" onclick="selectManualType('end')" style="padding:12px;border-radius:12px;border:2px solid var(--border);background:var(--cream2);text-align:center;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-soft);">🌇 Départ</div>
+    </div>
+
+    <label class="inp-lbl">Heure (optionnel)</label>
+    <input class="inp" id="manualTime" placeholder="ex: 07:00" type="time">
+
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <input type="checkbox" id="manualIncrDays" checked style="width:16px;height:16px;accent-color:var(--forest);">
+      <label for="manualIncrDays" style="font-size:12px;color:var(--text-mid);cursor:pointer;">Incrémenter le compteur de jours du worker (pour arrivée uniquement)</label>
+    </div>
+
+    <button class="btn btn-forest" onclick="confirmManualEntry()" style="margin-bottom:8px;">✅ Ajouter le pointage</button>
+    <button class="btn btn-surface" onclick="document.getElementById('manualModal').classList.remove('open')">Annuler</button>
+  </div>
+</div>
+
 <!-- PAY MODAL -->
 <div class="modal-overlay" id="payModal">
   <div class="modal-sheet">
@@ -475,6 +511,32 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
     <div class="btn-row">
       <button class="btn btn-surface" onclick="document.getElementById('editModal').classList.remove('open')">Annuler</button>
       <button class="btn btn-forest" onclick="saveWorkerEdit()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANUAL POINTAGE MODAL -->
+<div class="modal-overlay" id="manualModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Pointage manuel</div>
+    <div class="modal-sub">Ajoute un pointage pour un worker</div>
+    <label class="inp-lbl">Worker</label>
+    <select class="inp" id="manualWorker" style="margin-bottom:8px;"></select>
+    <label class="inp-lbl">Type</label>
+    <select class="inp" id="manualType" style="margin-bottom:8px;">
+      <option value="start">🌅 Arrivée</option>
+      <option value="end">🌇 Départ</option>
+    </select>
+    <label class="inp-lbl">Date</label>
+    <input class="inp" id="manualDate" type="date">
+    <label class="inp-lbl">Heure</label>
+    <input class="inp" id="manualTime" type="time" value="07:00">
+    <label class="inp-lbl">Adresse du chantier</label>
+    <input class="inp" id="manualAddr" placeholder="ex: 1080 Oxford Falls Rd">
+    <div class="btn-row">
+      <button class="btn btn-surface" onclick="document.getElementById('manualModal').classList.remove('open')">Annuler</button>
+      <button class="btn btn-forest" onclick="confirmManual()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -656,7 +718,7 @@ function renderDashboard() {
     const days=getWorkerWeekDays(w.id,dashWeekOff);
     const {sal,d220,d250}=computeSalary(w.id,days);
     const extra=w.extraAmount||0;
-    const boss=days.length*250;
+    const boss=days.length*275;
     totalBoss+=boss; totalPaid+=sal+extra;
     const isSenior=(w.totalDays||0)>=7;
     rowsHtml+='<div class="stat-row">' +
@@ -1022,6 +1084,99 @@ window.clearAllData = async function(){
   showToast('Non implémenté — supprime depuis la console Firebase');
 };
 
+// ── MANUAL ENTRY ──
+let manualType = 'start';
+
+window.openManualModal = function() {
+  // Populate worker select
+  const sel = document.getElementById('manualWorker');
+  sel.innerHTML = allWorkers.map(w => '<option value="'+w.id+'">'+w.name+'</option>').join('');
+  // Default date = today
+  document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('manualAddr').value = '';
+  document.getElementById('manualTime').value = '';
+  document.getElementById('manualIncrDays').checked = true;
+  manualType = 'start';
+  selectManualType('start');
+  document.getElementById('manualModal').classList.add('open');
+};
+
+window.selectManualType = function(type) {
+  manualType = type;
+  const sBtn = document.getElementById('manualBtnStart');
+  const eBtn = document.getElementById('manualBtnEnd');
+  if (type === 'start') {
+    sBtn.style.borderColor = 'var(--forest)';
+    sBtn.style.background = 'rgba(45,74,45,0.06)';
+    sBtn.style.color = 'var(--forest)';
+    eBtn.style.borderColor = 'var(--border)';
+    eBtn.style.background = 'var(--cream2)';
+    eBtn.style.color = 'var(--text-soft)';
+    document.getElementById('manualIncrDays').closest('div').style.display = 'flex';
+  } else {
+    eBtn.style.borderColor = 'var(--forest)';
+    eBtn.style.background = 'rgba(45,74,45,0.06)';
+    eBtn.style.color = 'var(--forest)';
+    sBtn.style.borderColor = 'var(--border)';
+    sBtn.style.background = 'var(--cream2)';
+    sBtn.style.color = 'var(--text-soft)';
+    document.getElementById('manualIncrDays').closest('div').style.display = 'none';
+  }
+};
+
+window.confirmManualEntry = async function() {
+  const wId = document.getElementById('manualWorker').value;
+  const date = document.getElementById('manualDate').value;
+  const addr = document.getElementById('manualAddr').value.trim();
+  const time = document.getElementById('manualTime').value || (manualType === 'start' ? '07:00' : '15:30');
+  const incrDays = document.getElementById('manualIncrDays').checked;
+
+  if (!wId) { showToast('Choisis un worker'); return; }
+  if (!date) { showToast('Choisis une date'); return; }
+  if (!addr) { showToast('Entre une adresse'); return; }
+
+  const w = allWorkers.find(x => x.id === wId);
+  if (!w) return;
+
+  // Check if entry already exists for this day/type
+  const existing = allEntries.find(e => e.workerId === wId && e.date === date && e.type === manualType);
+  if (existing) {
+    showToast('Un pointage '+( manualType==='start'?'arrivée':'départ')+' existe déjà ce jour');
+    return;
+  }
+
+  setSyncing(true);
+  const entryId = wId+'_'+manualType+'_'+date;
+  const entry = {
+    workerId: wId,
+    workerName: w.name,
+    type: manualType,
+    date: date,
+    address: addr,
+    gps: null,
+    photo: null,
+    time: time,
+    timestamp: new Date(date).getTime(),
+    manual: true
+  };
+
+  try {
+    await setDoc(doc(db, 'entries', entryId), entry);
+
+    // Increment totalDays if arrivée + checkbox checked
+    if (manualType === 'start' && incrDays) {
+      const newTotal = (w.totalDays||0) + 1;
+      await setDoc(doc(db, 'workers', wId), {totalDays: newTotal}, {merge: true});
+    }
+
+    document.getElementById('manualModal').classList.remove('open');
+    showToast('✅ Jour ajouté manuellement !');
+  } catch(err) {
+    showToast('❌ Erreur: ' + err.message);
+    setSyncing(false);
+  }
+};
+
 // ── COPY / PDF ──
 window.copyRecap = function(){
   let txt='RÉCAP '+weekLbl(dashWeekOff)+'\n'+'─'.repeat(30)+'\n';
@@ -1030,7 +1185,7 @@ window.copyRecap = function(){
     const days=getWorkerWeekDays(w.id,dashWeekOff);
     const {sal,d220,d250}=computeSalary(w.id,days);
     const extra=w.extraAmount||0;
-    tb+=days.length*250; tp+=sal+extra;
+    tb+=days.length*275; tp+=sal+extra;
     txt+=w.name+': '+days.length+'j';
     if(d220) txt+=' ('+d220+'×$220)';
     if(d250) txt+=' ('+d250+'×$250)';
@@ -1058,7 +1213,7 @@ window.exportPDF = function(){
     const days=getWorkerWeekDays(w.id,dashWeekOff);
     const {sal,d220,d250}=computeSalary(w.id,days);
     const extra=w.extraAmount||0;
-    tb+=days.length*250;tp+=sal+extra;
+    tb+=days.length*275;tp+=sal+extra;
     doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
     doc.text(w.name,m,y);
     doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(60,60,60);
@@ -1089,9 +1244,64 @@ function checkMissingPointages(){
   if(missing.length) showToast('⚠️ Pas encore pointés: '+missing.join(', '));
 }
 
+// ── MANUAL POINTAGE ──
+window.openManualModal = function() {
+  // Populate worker select
+  const sel = document.getElementById('manualWorker');
+  sel.innerHTML = allWorkers.map(w => '<option value="'+w.id+'">'+w.name+'</option>').join('');
+  // Set today's date
+  document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('manualAddr').value = '';
+  document.getElementById('manualModal').classList.add('open');
+};
+
+window.confirmManual = async function() {
+  const wId = document.getElementById('manualWorker').value;
+  const type = document.getElementById('manualType').value;
+  const date = document.getElementById('manualDate').value;
+  const time = document.getElementById('manualTime').value;
+  const addr = document.getElementById('manualAddr').value.trim();
+
+  if (!wId) { showToast('Choisis un worker'); return; }
+  if (!date) { showToast('Entre une date'); return; }
+  if (!addr) { showToast('Entre une adresse'); return; }
+
+  const w = allWorkers.find(x => x.id === wId);
+  const entryId = wId + '_' + type + '_' + date + '_manual';
+
+  const entry = {
+    workerId: wId,
+    workerName: w.name,
+    type: type,
+    date: date,
+    address: addr,
+    gps: null,
+    photo: null,
+    time: time,
+    timestamp: new Date(date+'T'+time).getTime(),
+    manual: true
+  };
+
+  try {
+    await setDoc(doc(db, 'entries', entryId), entry);
+    // If start — increment totalDays
+    if (type === 'start') {
+      const newTotal = (w.totalDays||0) + 1;
+      await setDoc(doc(db, 'workers', wId), {totalDays: newTotal}, {merge: true});
+    }
+    document.getElementById('manualModal').classList.remove('open');
+    showToast('✅ Pointage ajouté pour ' + w.name + ' le ' + date);
+  } catch(err) {
+    showToast('❌ Erreur: ' + err.message);
+  }
+};
+
 // ── MODAL CLOSE ──
+document.getElementById('manualModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+document.getElementById('manualModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
 document.getElementById('payModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
 document.getElementById('editModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+document.getElementById('manualModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
 
 // ── BOOT ──
 async function boot(){
