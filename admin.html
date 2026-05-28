@@ -595,33 +595,28 @@ function updateDots(){
 }
 
 function doCheckPin(){
-  try {
-    var inp = document.getElementById('pinInput');
-    var val = String(inp ? inp.value : '');
-    var digits = val.replace(/[^0-9]/g,'').slice(0,4);
-    alert('PIN saisi: [' + digits + '] / Attendu: [' + getPin() + ']');
+  var inp = document.getElementById('pinInput');
+  var val = String(inp ? inp.value : '');
+  var digits = val.replace(/[^0-9]/g,'').slice(0,4);
+  updateDots();
+  if(digits.length<4){
+    document.getElementById('pinError').textContent='Entre 4 chiffres complets';
+    document.getElementById('pinError').classList.add('show');
+    setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1500);
+    return;
+  }
+  if(digits===getPin()){
+    document.getElementById('pinInput').value='';
     updateDots();
-    if(digits.length<4){
-      document.getElementById('pinError').textContent='Entre 4 chiffres complets';
-      document.getElementById('pinError').classList.add('show');
-      setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1500);
-      return;
-    }
-    if(digits===getPin()){
-      document.getElementById('pinInput').value='';
-      updateDots();
-      document.getElementById('pinScreen').style.display='none';
-      document.getElementById('appMain').style.display='block';
-      initAdmin();
-    } else {
-      document.getElementById('pinError').textContent='Code incorrect — réessaie';
-      document.getElementById('pinError').classList.add('show');
-      document.getElementById('pinInput').value='';
-      updateDots();
-      setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1200);
-    }
-  } catch(err) {
-    alert('ERREUR: ' + err.message);
+    document.getElementById('pinScreen').style.display='none';
+    document.getElementById('appMain').style.display='block';
+    initAdmin();
+  } else {
+    document.getElementById('pinError').textContent='Code incorrect — réessaie';
+    document.getElementById('pinError').classList.add('show');
+    document.getElementById('pinInput').value='';
+    updateDots();
+    setTimeout(function(){document.getElementById('pinError').classList.remove('show');},1200);
   }
 }
 
@@ -935,9 +930,9 @@ function renderAdminGallery(){
 
   // Filter pills
   const pills=document.getElementById('galFilterPills');
-  pills.innerHTML='<div class="filter-pill '+(galFilterWorker==='all'?'active':'')+'" onclick="setGalFilter('all')">Tous</div>'
-    +workers.map((w,i)=>`<div class="filter-pill ${galFilterWorker===i?'active':''}" onclick="setGalFilter(${i})">${w.name}</div>`).join('');
-
+  var pillsHtml = '<div class="filter-pill ' + (galFilterWorker==='all'?'active':'') + '" onclick="setGalFilter(\"all\")" style="cursor:pointer">Tous</div>';
+  pillsHtml += workers.map(function(w,i){ return '<div class="filter-pill ' + (galFilterWorker===i?'active':'') + '" onclick="setGalFilter(' + i + ')" style="cursor:pointer">' + w.name + '</div>'; }).join('');
+  pills.innerHTML = pillsHtml;
   // Filter entries
   let week=entries.filter(en=>en.photo&&new Date(en.date)>=s&&new Date(en.date)<=e);
   if(galFilterWorker!=='all') week=week.filter(en=>en.workerIdx===galFilterWorker);
