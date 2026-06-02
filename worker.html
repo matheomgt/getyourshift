@@ -582,11 +582,13 @@ function renderWorkerGrid() {
     return;
   }
   grid.innerHTML = allWorkers.map((w, i) => {
-    const rate = (w.totalDays||0) >= 7 ? 250 : 220;
+    const isSenior = (w.totalDays||0) >= 7;
+    const badge = isSenior ? 'Senior ⭐' : 'Junior';
+    const badgeColor = isSenior ? '#c9a84c' : '#7a9e7a';
     return '<div class="worker-btn" id="wb'+i+'" onclick="selectWorker('+i+')">' +
       '<div class="worker-avatar">'+w.name[0].toUpperCase()+'</div>' +
       '<div class="worker-name-sm">'+w.name+'</div>' +
-      '<div class="worker-rate-sm">$'+rate+'/j</div>' +
+      '<div class="worker-rate-sm" style="color:'+badgeColor+';">'+badge+'</div>' +
       '</div>';
   }).join('');
 }
