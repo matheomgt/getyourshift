@@ -1200,40 +1200,90 @@ window.exportPDF = function(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   let y=20; const m=18;
-  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(30,50,30);
-  doc.text('Get Your Shift — Récap',m,y);y+=8;
-  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(100,100,100);
-  doc.text(weekLbl(dashWeekOff),m,y);y+=10;
-  doc.setDrawColor(200,220,200);doc.line(m,y,210-m,y);y+=8;
-  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(100,100,100);
-  ['NOM','JOURS','TAUX','TOTAL'].forEach((h,i)=>doc.text(h,[m,70,110,165][i],y));
-  y+=6;doc.line(m,y,210-m,y);y+=7;
-  let tb=0,tp=0;
+
+  // ── HEADER ──
+  doc.setFillColor(45,74,45);
+  doc.roundedRect(m,y,210-m*2,18,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(244,241,235);
+  doc.text('Récapitulatif de la semaine',m+6,y+12);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(168,197,160);
+  doc.text(weekLbl(dashWeekOff), 210-m-2, y+12, {align:'right'});
+  y+=26;
+
+  // ── PER WORKER SECTION ──
+  let totalDays=0, grandTotal=0;
+
   allWorkers.forEach(w=>{
     const days=getWorkerWeekDays(w.id,dashWeekOff);
-    const {sal,d220,d250}=computeSalary(w.id,days);
-    const extra=w.extraAmount||0;
-    tb+=days.length*275;tp+=sal+extra;
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
-    doc.text(w.name,m,y);
-    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(60,60,60);
-    doc.text(days.length+'j',70,y);
-    let rt='';if(d220)rt+=d220+'×$220 ';if(d250)rt+=d250+'×$250';
-    doc.text(rt.trim()||'—',110,y);
-    doc.setFont('helvetica','bold');doc.text('$'+(sal+extra),165,y);
-    y+=9;doc.setDrawColor(235,240,235);doc.line(m,y-2,210-m,y-2);
+    if(!days.length) return;
+
+    // Worker name header
+    doc.setFillColor(237,233,224);
+    doc.roundedRect(m,y,210-m*2,10,1,1,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(26,42,26);
+    doc.text(w.name.toUpperCase(), m+4, y+7);
+    y+=14;
+
+    // Entry rows: date + chantier
+    const s=getWeekStart(dashWeekOff), e=getWeekEnd(dashWeekOff);
+    const wkEntries=allEntries.filter(en=>en.workerId===w.id&&new Date(en.date)>=s&&new Date(en.date)<=e);
+    const byDay={};
+    wkEntries.forEach(en=>{if(!byDay[en.date])byDay[en.date]=en;});
+
+    days.forEach(d=>{
+      const entry=byDay[d];
+      const dateStr=new Date(d).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});
+      const addr=entry?entry.address:'—';
+      doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(60,60,60);
+      doc.text(dateStr, m+4, y);
+      doc.text(addr, m+50, y);
+      doc.setFont('helvetica','bold');doc.setTextColor(45,74,45);
+      doc.text('$275', 210-m-4, y, {align:'right'});
+      doc.setTextColor(180,180,180);
+      doc.setLineWidth(0.3);
+      doc.line(m,y+3,210-m,y+3);
+      y+=9;
+    });
+
+    // Worker subtotal
+    const workerTotal=days.length*275;
+    totalDays+=days.length; grandTotal+=workerTotal;
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(45,74,45);
+    doc.text('Sous-total '+w.name+' : '+days.length+' jour(s)', m+4, y);
+    doc.text('$'+workerTotal.toLocaleString(), 210-m-4, y, {align:'right'});
+    y+=14;
   });
-  y+=8;
-  doc.setFillColor(240,248,230);doc.roundedRect(m,y,170,36,3,3,'F');y+=10;
+
+  // ── TOTAL BOX ──
+  y+=4;
+  doc.setFillColor(240,248,230);
+  doc.roundedRect(m,y,210-m*2,36,3,3,'F');
+  doc.setDrawColor(122,158,122);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(m,y,210-m*2,36,3,3,'S');
+
   doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(80,80,80);
-  doc.text('Total boss:',m+6,y);doc.setFont('helvetica','bold');doc.text('$'+tb,160,y,{align:'right'});y+=8;
-  doc.setFont('helvetica','normal');doc.text('Total payé:',m+6,y);doc.setFont('helvetica','bold');doc.text('$'+tp,160,y,{align:'right'});y+=8;
-  doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(40,90,40);
-  doc.text('COMMISSION:',m+6,y);doc.text('$'+(tb-tp),160,y,{align:'right'});
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(150,150,150);
-  doc.text('Généré le '+new Date().toLocaleDateString('fr-FR')+' · Get Your Shift Admin',m,285);
-  doc.save('recap_'+weekLbl(dashWeekOff).replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
-  showToast('📄 PDF téléchargé !');
+  doc.text('Total jours travaillés :', m+6, y+10);
+  doc.setFont('helvetica','bold');doc.setTextColor(26,42,26);
+  doc.text(totalDays+' jours × $275 = $'+grandTotal.toLocaleString(), 210-m-4, y+10, {align:'right'});
+
+  const commission=Math.round(grandTotal*0.10);
+  const net=grandTotal+commission;
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(80,80,80);
+  doc.text('Commission agence (10%) :', m+6, y+22);
+  doc.setFont('helvetica','bold');doc.setTextColor(26,42,26);
+  doc.text('+ $'+commission.toLocaleString(), 210-m-4, y+22, {align:'right'});
+
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(26,42,26);
+  doc.text('TOTAL À RÉGLER :', m+6, y+33);
+  doc.text('$'+net.toLocaleString(), 210-m-4, y+33, {align:'right'});
+
+  // ── FOOTER ──
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(160,160,160);
+  doc.text('Document généré le '+new Date().toLocaleDateString('fr-FR')+' · Get Your Shift', m, 285);
+
+  doc.save('facture_boss_'+weekLbl(dashWeekOff).replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
+  showToast('📄 PDF boss téléchargé !');
 };
 
 // ── NOTIFICATION MISSING POINTAGE ──
