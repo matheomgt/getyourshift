@@ -175,9 +175,6 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
 /* PAY CARDS */
 .pay-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;box-shadow:var(--shadow);}
-.paid-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:500;}
-.paid-tag.yes{background:rgba(58,170,106,0.1);color:var(--success);border:1px solid rgba(58,170,106,0.25);}
-.paid-tag.no{background:rgba(201,168,76,0.1);color:var(--gold);border:1px solid rgba(201,168,76,0.2);}
 
 /* FICHES */
 .fiche-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
@@ -271,6 +268,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
     <div class="tbt" id="tbt-galerie" onclick="showTab('galerie')">📸 Galerie</div>
     <div class="tbt" id="tbt-fiches" onclick="showTab('fiches')">📋 Fiches</div>
     <div class="tbt" id="tbt-paiements" onclick="showTab('paiements')">💰 Paiements</div>
+    <div class="tbt" id="tbt-planning" onclick="showTab('planning')">📅 Planning<span id="planningBadge" style="display:none;background:var(--danger);color:#fff;border-radius:20px;padding:1px 6px;font-size:9px;margin-left:4px;"></span></div>
     <div class="tbt" id="tbt-settings" onclick="showTab('settings')">⚙️ Réglages</div>
   </div>
 
@@ -364,7 +362,10 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
           <div class="worker-av" id="ficheAv"></div>
           <div><div class="worker-name" id="ficheName"></div><div class="worker-meta" id="ficheRateTxt"></div></div>
-          <div class="incident-badge" id="ficheIncBadge" style="display:none;margin-left:auto;">⚠️ <span id="ficheIncCount">0</span></div>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+            <div class="incident-badge" id="ficheLateCancelBadge" style="display:none;background:rgba(201,168,76,0.12);border-color:rgba(201,168,76,0.3);color:var(--gold);">⏳ <span id="ficheLateCancelCount">0</span> annulation(s) tardive(s)</div>
+            <div class="incident-badge" id="ficheIncBadge" style="display:none;">⚠️ <span id="ficheIncCount">0</span></div>
+          </div>
         </div>
         <div class="fiche-stat-grid">
           <div class="fiche-stat"><div class="fiche-stat-val" id="ficheDays">0</div><div class="fiche-stat-lbl">Jours</div></div>
@@ -419,12 +420,35 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
   <!-- PAIEMENTS -->
   <div class="tcontent" id="tab-paiements">
-    <div class="week-nav">
-      <button class="wnav-btn" onclick="changePayWeek(-1)">‹</button>
-      <div class="wnav-lbl" id="payWeekLbl"></div>
-      <button class="wnav-btn" onclick="changePayWeek(1)">›</button>
-    </div>
     <div id="payList"></div>
+  </div>
+
+  <!-- PLANNING -->
+  <div class="tcontent" id="tab-planning">
+    <button class="btn btn-forest" onclick="toggleNewSlot()" style="margin-bottom:12px;">+ Créer un créneau</button>
+    <div class="expand-panel" id="newSlotPanel">
+      <div class="card-title">Nouveau créneau</div>
+      <label class="inp-lbl">Adresse du chantier</label>
+      <input class="inp" id="nsAddr" placeholder="ex: 1080 Oxford Falls Rd">
+      <div class="inp-row">
+        <div><label class="inp-lbl">Date</label><input class="inp" id="nsDate" type="date"></div>
+        <div><label class="inp-lbl">Places</label><input class="inp" id="nsCapacity" type="number" placeholder="1"></div>
+      </div>
+      <label class="inp-lbl">Précisions pour cette journée (optionnel)</label>
+      <input class="inp" id="nsNotes" placeholder="ex: rdv avec le client à 8h, prévoir bottes…">
+      <div class="btn-row">
+        <button class="btn btn-surface" onclick="toggleNewSlot()">Annuler</button>
+        <button class="btn btn-forest" onclick="createSlot()">Créer</button>
+      </div>
+    </div>
+    <div class="card" id="cancelReqCard" style="display:none;margin-bottom:10px;">
+      <div class="card-title">⏳ Annulations en attente</div>
+      <div id="cancelReqList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Tous les créneaux</div>
+      <div id="slotsList"></div>
+    </div>
   </div>
 
   <!-- SETTINGS -->
@@ -477,21 +501,6 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
   </div>
 </div>
 
-<!-- PAY MODAL -->
-<div class="modal-overlay" id="payModal">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title" id="payModalTitle"></div>
-    <div class="modal-sub" id="payModalSub"></div>
-    <div class="photo-zone" id="payPhotoZone" onclick="document.getElementById('payPhotoInput').click()">
-      <div class="pz-icon">📱</div><div class="pz-txt">Photo du virement</div>
-    </div>
-    <input type="file" id="payPhotoInput" accept="image/*" style="display:none;" onchange="handlePayPhoto(event)">
-    <button class="btn btn-sage" onclick="confirmPay()" style="margin-bottom:8px;">✅ Valider le paiement</button>
-    <button class="btn btn-surface" onclick="document.getElementById('payModal').classList.remove('open')">Annuler</button>
-  </div>
-</div>
-
 <!-- EDIT WORKER MODAL -->
 <div class="modal-overlay" id="editModal">
   <div class="modal-sheet">
@@ -511,32 +520,6 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
     <div class="btn-row">
       <button class="btn btn-surface" onclick="document.getElementById('editModal').classList.remove('open')">Annuler</button>
       <button class="btn btn-forest" onclick="saveWorkerEdit()">Enregistrer</button>
-    </div>
-  </div>
-</div>
-
-<!-- MANUAL POINTAGE MODAL -->
-<div class="modal-overlay" id="manualModal">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title">✏️ Pointage manuel</div>
-    <div class="modal-sub">Ajoute un pointage pour un worker</div>
-    <label class="inp-lbl">Worker</label>
-    <select class="inp" id="manualWorker" style="margin-bottom:8px;"></select>
-    <label class="inp-lbl">Type</label>
-    <select class="inp" id="manualType" style="margin-bottom:8px;">
-      <option value="start">🌅 Arrivée</option>
-      <option value="end">🌇 Départ</option>
-    </select>
-    <label class="inp-lbl">Date</label>
-    <input class="inp" id="manualDate" type="date">
-    <label class="inp-lbl">Heure</label>
-    <input class="inp" id="manualTime" type="time" value="07:00">
-    <label class="inp-lbl">Adresse du chantier</label>
-    <input class="inp" id="manualAddr" placeholder="ex: 1080 Oxford Falls Rd">
-    <div class="btn-row">
-      <button class="btn btn-surface" onclick="document.getElementById('manualModal').classList.remove('open')">Annuler</button>
-      <button class="btn btn-forest" onclick="confirmManual()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -565,17 +548,22 @@ const db = getFirestore(app);
 const ADMIN_PIN_KEY = 'gys_admin_pin';
 let allWorkers = [];
 let allEntries = [];
-let dashWeekOff=0, ptgWeekOff=0, galWeekOff=0, payWeekOff=0;
+let dashWeekOff=0, ptgWeekOff=0, galWeekOff=0;
 let galFilter = 'all';
 let currentFicheId = null;
 let ficheCalOff = 0;
-let payingWorkerId = null, payWeekSnap = 0, payPhotoData = null;
 let editingWorkerId = null;
-let unsubWorkers = null, unsubEntries = null;
+let allSlots = [], allCancelRequests = [];
+let unsubWorkers = null, unsubEntries = null, unsubSlots = null, unsubCancelReqs = null;
 
 // ── UTILS ──
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 function formatDate(d) { return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); }
+function mapsLink(addr) { return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr); }
+function monthStr(ts) { const d=new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function getWeekStart(off) {
   const n=new Date(), m=new Date(n);
   m.setDate(n.getDate()-((n.getDay()+6)%7)+(off||0)*7);
@@ -627,6 +615,8 @@ document.getElementById('pinValidBtn').addEventListener('click', function() {
 document.getElementById('lockBtn').addEventListener('click', () => {
   if(unsubWorkers){unsubWorkers();unsubWorkers=null;}
   if(unsubEntries){unsubEntries();unsubEntries=null;}
+  if(unsubSlots){unsubSlots();unsubSlots=null;}
+  if(unsubCancelReqs){unsubCancelReqs();unsubCancelReqs=null;}
   document.getElementById('appMain').style.display='none';
   document.getElementById('pinScreen').style.display='flex';
   document.getElementById('pinInput').value='';
@@ -640,7 +630,6 @@ async function initAdmin() {
   document.getElementById('dashWeekLbl').textContent=weekLbl(dashWeekOff);
   document.getElementById('ptgWeekLbl').textContent=weekLbl(ptgWeekOff);
   document.getElementById('galWeekLbl').textContent=weekLbl(galWeekOff);
-  document.getElementById('payWeekLbl').textContent=weekLbl(payWeekOff);
 
   // Live listeners
   if(unsubWorkers) unsubWorkers();
@@ -656,6 +645,24 @@ async function initAdmin() {
   unsubEntries = onSnapshot(collection(db,'entries'), snap => {
     allEntries=[];
     snap.forEach(d=>allEntries.push({id:d.id,...d.data()}));
+    refreshCurrentTab();
+    setSyncing(false);
+  });
+
+  if(unsubSlots) unsubSlots();
+  unsubSlots = onSnapshot(collection(db,'slots'), snap => {
+    allSlots=[];
+    snap.forEach(d=>allSlots.push({id:d.id,...d.data()}));
+    allSlots.sort((a,b)=>a.date.localeCompare(b.date));
+    refreshCurrentTab();
+    setSyncing(false);
+  });
+
+  if(unsubCancelReqs) unsubCancelReqs();
+  unsubCancelReqs = onSnapshot(collection(db,'cancelRequests'), snap => {
+    allCancelRequests=[];
+    snap.forEach(d=>allCancelRequests.push({id:d.id,...d.data()}));
+    updatePlanningBadge();
     refreshCurrentTab();
     setSyncing(false);
   });
@@ -687,13 +694,13 @@ function renderTab(id) {
   else if(id==='galerie') renderGalerie();
   else if(id==='fiches') renderFicheSelect();
   else if(id==='paiements') renderPaiements();
+  else if(id==='planning') renderPlanning();
 }
 
 // ── WEEK HELPERS ──
 window.changeWeek = function(d){dashWeekOff+=d;document.getElementById('dashWeekLbl').textContent=weekLbl(dashWeekOff);renderDashboard();};
 window.changePtgWeek = function(d){ptgWeekOff+=d;document.getElementById('ptgWeekLbl').textContent=weekLbl(ptgWeekOff);renderPointages();};
 window.changeGalWeek = function(d){galWeekOff+=d;document.getElementById('galWeekLbl').textContent=weekLbl(galWeekOff);renderGalerie();};
-window.changePayWeek = function(d){payWeekOff+=d;document.getElementById('payWeekLbl').textContent=weekLbl(payWeekOff);renderPaiements();};
 
 function getWorkerWeekDays(wId, off) {
   const s=getWeekStart(off), e=getWeekEnd(off);
@@ -711,6 +718,19 @@ function computeSalary(wId, daysArr) {
   return {sal,d220,d250};
 }
 
+// Solde dû (ardoise) — jours travaillés depuis toujours × taux, indépendant du calcul de commission
+function totalEarned(w) {
+  const days=w.totalDays||0;
+  const base=w.customRate ? days*w.customRate : (()=>{let s=0;for(let i=0;i<days;i++)s+=(i<7?220:250);return s;})();
+  return base+(w.extraAmount||0);
+}
+function totalPaid(w) {
+  return (w.payments||[]).reduce((s,p)=>s+(p.amount||0),0);
+}
+function soldeDu(w) {
+  return totalEarned(w)-totalPaid(w);
+}
+
 // ── DASHBOARD ──
 function renderDashboard() {
   let totalBoss=0, totalPaid=0, rowsHtml='';
@@ -720,7 +740,7 @@ function renderDashboard() {
     const extra=w.extraAmount||0;
     const boss=days.length*275;
     totalBoss+=boss; totalPaid+=sal+extra;
-    const isSenior=(w.totalDays||0)>=7;
+    const isSenior=(w.totalDays||0)>=7||(w.customRate||0)>=250;
     rowsHtml+='<div class="stat-row">' +
       '<div class="stat-av'+(isSenior?' senior':'')+'">'+w.name[0].toUpperCase()+'</div>' +
       '<div class="stat-info"><div class="stat-name">'+w.name+'</div>' +
@@ -746,7 +766,7 @@ window.addWorker = async function() {
   const days=parseInt(document.getElementById('nwDays').value)||0;
   const rate=parseInt(document.getElementById('nwRate').value)||0;
   const wId=name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now();
-  await setDoc(doc(db,'workers',wId),{name,totalDays:days,customRate:rate||null,extraAmount:0,extraNote:'',incidents:[],paidWeeks:{}});
+  await setDoc(doc(db,'workers',wId),{name,totalDays:days,customRate:rate||null,extraAmount:0,extraNote:'',incidents:[],payments:[]});
   document.getElementById('nwName').value='';document.getElementById('nwDays').value='';document.getElementById('nwRate').value='';
   window.toggleNewWorker();
   showToast('✅ '+name+' ajouté !');
@@ -757,7 +777,7 @@ function renderWorkers() {
   if(!allWorkers.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun worker</div>';return;}
   el.innerHTML=allWorkers.map(w=>{
     const rate=w.customRate||((w.totalDays||0)>=7?250:220);
-    const isSenior=(w.totalDays||0)>=7;
+    const isSenior=(w.totalDays||0)>=7||(w.customRate||0)>=250;
     const pct=Math.min((w.totalDays||0)/7*100,100);
     const days=getWorkerWeekDays(w.id,0);
     const {sal}=computeSalary(w.id,days);
@@ -827,7 +847,15 @@ function renderPointages() {
 
 window.deleteEntry = async function(id) {
   if(!confirm('Supprimer ce pointage ?')) return;
+  const entry = allEntries.find(e => e.id === id);
   await deleteDoc(doc(db,'entries',id));
+  if (entry && entry.type === 'start') {
+    const w = allWorkers.find(x => x.id === entry.workerId);
+    if (w) {
+      const newTotal = Math.max(0, (w.totalDays||0) - 1);
+      await setDoc(doc(db,'workers',entry.workerId), {totalDays: newTotal}, {merge: true});
+    }
+  }
   showToast('Supprimé');
 };
 
@@ -907,7 +935,7 @@ function renderFicheDetail() {
   const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
   const entries=allEntries.filter(e=>e.workerId===currentFicheId);
   const rate=(w.totalDays||0)>=7?250:220;
-  const isSenior=(w.totalDays||0)>=7;
+  const isSenior=(w.totalDays||0)>=7||(w.customRate||0)>=250;
   const incidents=w.incidents||[];
 
   document.getElementById('ficheAv').textContent=w.name[0].toUpperCase();
@@ -915,9 +943,7 @@ function renderFicheDetail() {
   document.getElementById('ficheRateTxt').textContent='$'+rate+'/j · '+(isSenior?'Taux senior ✓':'Junior — '+(7-(w.totalDays||0))+'j avant $250');
   document.getElementById('ficheDays').textContent=w.totalDays||0;
 
-  let earned=0; for(let i=0;i<(w.totalDays||0);i++) earned+=(i<7?220:250);
-  earned+=(w.extraAmount||0);
-  document.getElementById('ficheEarned').textContent='$'+earned.toLocaleString();
+  document.getElementById('ficheEarned').textContent='$'+totalEarned(w).toLocaleString();
 
   const addrs=[...new Set(entries.filter(e=>e.address).map(e=>e.address))];
   document.getElementById('ficheChantiers').textContent=addrs.length;
@@ -925,6 +951,12 @@ function renderFicheDetail() {
   const ib=document.getElementById('ficheIncBadge');
   if(incidents.length){ib.style.display='flex';document.getElementById('ficheIncCount').textContent=incidents.length;}
   else ib.style.display='none';
+
+  const curMonth=monthStr(Date.now());
+  const lateCancels=allCancelRequests.filter(r=>r.workerId===currentFicheId&&r.status==='approved'&&r.month===curMonth);
+  const lb=document.getElementById('ficheLateCancelBadge');
+  if(lateCancels.length>1){lb.style.display='flex';document.getElementById('ficheLateCancelCount').textContent=lateCancels.length;}
+  else lb.style.display='none';
 
   document.getElementById('fichePinDisplay').textContent=w.pin?w.pin.split('').join(' '):'Pas encore créé';
   document.getElementById('ficheNotes').value=localStorage.getItem('gys_notes_'+currentFicheId)||'';
@@ -962,7 +994,7 @@ function renderFicheCal() {
   const worked=new Set(entries.map(e=>e.date));
   const firstDay=(target.getDay()+6)%7;
   const daysInMonth=new Date(target.getFullYear(),target.getMonth()+1,0).getDate();
-  const todayS=new Date().toISOString().split('T')[0];
+  const todayS=todayStr();
   const names=['L','M','M','J','V','S','D'];
   document.getElementById('ficheCalHdr').innerHTML=names.map(d=>'<div class="cal-day-name">'+d+'</div>').join('');
   let html='';
@@ -1015,62 +1047,167 @@ window.resetPin = async function(){
   showToast('✅ PIN réinitialisé');
 };
 
-// ── PAIEMENTS ──
+// ── PAIEMENTS (ardoise cumulée) ──
 function renderPaiements(){
   const el=document.getElementById('payList');
   if(!allWorkers.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun worker</div>';return;}
   el.innerHTML=allWorkers.map(w=>{
-    const days=getWorkerWeekDays(w.id,payWeekOff);
-    const {sal}=computeSalary(w.id,days);
-    const total=sal+(w.extraAmount||0);
-    const wl=weekLbl(payWeekOff);
-    const isPaid=w.paidWeeks&&w.paidWeeks[wl];
-    const rate=(w.totalDays||0)>=7?250:220;
+    const earned=totalEarned(w);
+    const paid=totalPaid(w);
+    const due=earned-paid;
+    const payments=[...(w.payments||[])].reverse();
+    const histHtml=payments.length ? payments.map(p=>
+      '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--cream2);font-size:12px;">' +
+      '<div style="color:var(--text-mid);">'+p.date+(p.note?' · '+p.note:'')+'</div>' +
+      '<div style="font-weight:600;color:var(--forest);">$'+(p.amount||0).toLocaleString()+'</div></div>'
+    ).join('') : '<div style="color:var(--text-soft);font-size:12px;padding:8px 0;">Aucun paiement encore</div>';
     return '<div class="pay-card">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
       '<div class="worker-av">'+w.name[0].toUpperCase()+'</div>' +
       '<div style="flex:1;"><div style="font-family:\'Cormorant Garamond\',serif;font-size:18px;font-weight:600;color:var(--text-dark);">'+w.name+'</div>' +
-      '<div style="font-size:11px;color:var(--text-soft);">'+days.length+' jour(s) · $'+rate+'/j</div></div>' +
-      '<div class="paid-tag '+(isPaid?'yes':'no')+'">'+(isPaid?'✓ Payé':'En attente')+'</div></div>' +
-      '<div style="font-family:\'Cormorant Garamond\',serif;font-size:34px;font-weight:600;color:'+(isPaid?'var(--success)':'var(--forest)')+';margin-bottom:10px;">$'+total.toLocaleString()+'</div>' +
-      (w.extraAmount?'<div style="font-size:11px;color:var(--gold);margin-bottom:10px;">Inclut extra: $'+w.extraAmount+(w.extraNote?' ('+w.extraNote+')':'')+'</div>':'') +
-      (isPaid?'<div style="font-size:11px;color:var(--text-soft);">Payé le '+isPaid.date+'</div>'+(isPaid.photo?'<img src="'+isPaid.photo+'" style="width:70px;height:46px;object-fit:cover;border-radius:8px;margin-top:8px;border:1px solid var(--border);">':'')
-      :'<button class="btn btn-sage" onclick="openPayModal(\''+w.id+'\')">💳 Marquer comme payé</button>') +
+      '<div style="font-size:11px;color:var(--text-soft);">'+(w.totalDays||0)+' jours travaillés au total</div></div></div>' +
+      '<div style="font-family:\'Cormorant Garamond\',serif;font-size:34px;font-weight:600;color:'+(due>0?'var(--forest)':'var(--success)')+';margin-bottom:4px;">$'+due.toLocaleString()+'</div>' +
+      '<div style="font-size:11px;color:var(--text-soft);margin-bottom:12px;">Solde dû · gagné $'+earned.toLocaleString()+' − payé $'+paid.toLocaleString()+'</div>' +
+      '<button class="btn btn-sage" onclick="togglePayForm(\''+w.id+'\')" style="margin-bottom:8px;">💳 Marquer un paiement</button>' +
+      '<div class="expand-panel" id="payForm-'+w.id+'">' +
+      '<label class="inp-lbl">Montant ($)</label>' +
+      '<input class="inp" id="payAmount-'+w.id+'" type="number" placeholder="0">' +
+      '<label class="inp-lbl">Note (optionnel)</label>' +
+      '<input class="inp" id="payNote-'+w.id+'" placeholder="ex: virement du 6 juillet">' +
+      '<button class="btn btn-forest" onclick="addPayment(\''+w.id+'\')">✅ Enregistrer le paiement</button>' +
+      '</div>' +
+      '<div style="margin-top:12px;">' +
+      '<div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:6px;">Historique des paiements</div>' +
+      histHtml +
+      '</div>' +
       '</div>';
   }).join('');
 }
 
-window.openPayModal = function(wId){
-  payingWorkerId=wId; payPhotoData=null; payWeekSnap=payWeekOff;
+window.togglePayForm = function(wId){
+  const panel=document.getElementById('payForm-'+wId);
+  if(!panel) return;
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')){
+    const w=allWorkers.find(x=>x.id===wId);
+    const due=w?soldeDu(w):0;
+    document.getElementById('payAmount-'+wId).value = due>0?due:'';
+    document.getElementById('payNote-'+wId).value='';
+  }
+};
+
+window.addPayment = async function(wId){
+  const amount=parseFloat(document.getElementById('payAmount-'+wId).value);
+  const note=document.getElementById('payNote-'+wId).value.trim();
+  if(!amount||amount<=0){showToast('Entre un montant valide');return;}
   const w=allWorkers.find(x=>x.id===wId);
-  const days=getWorkerWeekDays(wId,payWeekOff);
-  const {sal}=computeSalary(wId,days);
-  const total=sal+(w.extraAmount||0);
-  document.getElementById('payModalTitle').textContent='Payer '+w.name;
-  document.getElementById('payModalSub').textContent='Montant : $'+total+' · Photo virement obligatoire';
-  document.getElementById('payPhotoZone').innerHTML='<div class="pz-icon">📱</div><div class="pz-txt">Photo du virement</div>';
-  document.getElementById('payPhotoZone').classList.remove('has');
-  document.getElementById('payPhotoInput').value='';
-  document.getElementById('payModal').classList.add('open');
-};
-
-window.handlePayPhoto = function(e){
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=ev=>{payPhotoData=ev.target.result;const z=document.getElementById('payPhotoZone');z.innerHTML='<img src="'+payPhotoData+'" style="width:100%;height:130px;object-fit:cover;">';z.classList.add('has');};r.readAsDataURL(f);
-};
-
-window.confirmPay = async function(){
-  if(!payPhotoData){showToast('Photo du virement obligatoire');return;}
-  const wl=weekLbl(payWeekSnap);
-  const paidWeeks={};
-  paidWeeks[wl]={date:new Date().toLocaleDateString('fr-FR'),photo:payPhotoData};
-  const w=allWorkers.find(x=>x.id===payingWorkerId);
-  const existing=w&&w.paidWeeks?{...w.paidWeeks}:{};
-  existing[wl]=paidWeeks[wl];
-  await setDoc(doc(db,'workers',payingWorkerId),{paidWeeks:existing},{merge:true});
-  document.getElementById('payModal').classList.remove('open');
+  if(!w) return;
+  const payments=[...(w.payments||[]),{date:new Date().toLocaleDateString('fr-FR'),amount,note}];
+  await setDoc(doc(db,'workers',wId),{payments},{merge:true});
+  document.getElementById('payForm-'+wId).classList.remove('open');
   showToast('✅ Paiement enregistré !');
 };
+
+// ── PLANNING (créneaux) ──
+window.toggleNewSlot = function(){document.getElementById('newSlotPanel').classList.toggle('open');};
+
+window.createSlot = async function(){
+  const address=document.getElementById('nsAddr').value.trim();
+  const date=document.getElementById('nsDate').value;
+  const capacity=parseInt(document.getElementById('nsCapacity').value)||0;
+  const notes=document.getElementById('nsNotes').value.trim();
+  if(!address){showToast('Entre une adresse');return;}
+  if(!date){showToast('Choisis une date');return;}
+  if(capacity<1){showToast('Entre un nombre de places (min 1)');return;}
+  const slotId='slot_'+Date.now();
+  await setDoc(doc(db,'slots',slotId),{address,date,capacity,notes,signups:[],createdAt:Date.now()});
+  document.getElementById('nsAddr').value='';
+  document.getElementById('nsDate').value='';
+  document.getElementById('nsCapacity').value='';
+  document.getElementById('nsNotes').value='';
+  window.toggleNewSlot();
+  showToast('✅ Créneau créé !');
+};
+
+window.saveSlotNotes = async function(slotId){
+  const notes=document.getElementById('slotNotes-'+slotId).value.trim();
+  await setDoc(doc(db,'slots',slotId),{notes},{merge:true});
+  showToast('✅ Précisions enregistrées');
+};
+
+window.deleteSlot = async function(slotId){
+  if(!confirm('Supprimer ce créneau ?')) return;
+  await deleteDoc(doc(db,'slots',slotId));
+  showToast('Supprimé');
+};
+
+function renderPlanning(){
+  // Annulations en attente
+  const pending=allCancelRequests.filter(r=>r.status==='pending');
+  const reqCard=document.getElementById('cancelReqCard');
+  if(pending.length){
+    reqCard.style.display='block';
+    document.getElementById('cancelReqList').innerHTML=pending.map(r=>
+      '<div style="padding:10px 0;border-bottom:1px solid var(--cream2);">' +
+      '<div style="font-size:13px;font-weight:500;color:var(--text-dark);">'+r.workerName+' · '+formatDate(r.slotDate)+' · '+r.slotAddress+'</div>' +
+      '<div style="font-size:12px;color:var(--text-soft);margin:4px 0 8px;">Raison : '+r.reason+'</div>' +
+      '<div class="btn-row" style="margin-top:0;">' +
+      '<button class="btn btn-sage" onclick="approveCancelRequest(\''+r.id+'\')">✅ Approuver</button>' +
+      '<button class="btn btn-danger" onclick="refuseCancelRequest(\''+r.id+'\')">❌ Refuser</button>' +
+      '</div></div>'
+    ).join('');
+  } else {
+    reqCard.style.display='none';
+  }
+
+  // Liste des créneaux
+  const el=document.getElementById('slotsList');
+  if(!allSlots.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun créneau</div>';return;}
+  el.innerHTML=allSlots.map(s=>{
+    const signups=s.signups||[];
+    const pendingForSlot=pending.filter(r=>r.slotId===s.id).map(r=>r.workerId);
+    const namesHtml=signups.length ? signups.map(su=>'<div style="font-size:12px;color:var(--text-mid);padding:3px 0;">👷 '+su.workerName+(pendingForSlot.includes(su.workerId)?' <span style="color:var(--gold);">⏳ annulation en attente</span>':'')+'</div>').join('') : '<div style="font-size:12px;color:var(--text-soft);padding:3px 0;">Personne inscrit</div>';
+    return '<div class="worker-card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+      '<div><div class="worker-name">'+formatDate(s.date)+'</div>' +
+      '<a href="'+mapsLink(s.address)+'" target="_blank" style="font-size:12px;color:var(--sage);text-decoration:underline;">📍 '+s.address+'</a></div>' +
+      '<div class="rate-badge normal">'+signups.length+'/'+s.capacity+'</div>' +
+      '</div>' +
+      namesHtml +
+      '<div style="margin-top:10px;">' +
+      '<label class="inp-lbl">Précisions pour cette journée</label>' +
+      '<input class="inp" id="slotNotes-'+s.id+'" value="'+(s.notes||'').replace(/"/g,'&quot;')+'" placeholder="ex: rdv avec le client à 8h, prévoir bottes…">' +
+      '<button class="btn btn-surface" style="margin-top:6px;" onclick="saveSlotNotes(\''+s.id+'\')">💾 Enregistrer les précisions</button>' +
+      '</div>' +
+      '<button class="btn btn-danger" style="margin-top:10px;" onclick="deleteSlot(\''+s.id+'\')">🗑 Supprimer le créneau</button>' +
+      '</div>';
+  }).join('');
+}
+
+window.approveCancelRequest = async function(reqId){
+  const req=allCancelRequests.find(r=>r.id===reqId);
+  if(!req) return;
+  const slot=allSlots.find(s=>s.id===req.slotId);
+  if(slot){
+    const signups=(slot.signups||[]).filter(su=>su.workerId!==req.workerId);
+    await setDoc(doc(db,'slots',req.slotId),{signups},{merge:true});
+  }
+  await setDoc(doc(db,'cancelRequests',reqId),{status:'approved'},{merge:true});
+  showToast('✅ Annulation approuvée');
+};
+
+window.refuseCancelRequest = async function(reqId){
+  await setDoc(doc(db,'cancelRequests',reqId),{status:'refused'},{merge:true});
+  showToast('Annulation refusée');
+};
+
+function updatePlanningBadge(){
+  const badge=document.getElementById('planningBadge');
+  if(!badge) return;
+  const count=allCancelRequests.filter(r=>r.status==='pending').length;
+  if(count){badge.style.display='inline-block';badge.textContent=count;}
+  else badge.style.display='none';
+}
 
 // ── SETTINGS ──
 window.saveAdminPin = function(){
@@ -1092,7 +1229,7 @@ window.openManualModal = function() {
   const sel = document.getElementById('manualWorker');
   sel.innerHTML = allWorkers.map(w => '<option value="'+w.id+'">'+w.name+'</option>').join('');
   // Default date = today
-  document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('manualDate').value = todayStr();
   document.getElementById('manualAddr').value = '';
   document.getElementById('manualTime').value = '';
   document.getElementById('manualIncrDays').checked = true;
@@ -1294,64 +1431,9 @@ function checkMissingPointages(){
   if(missing.length) showToast('⚠️ Pas encore pointés: '+missing.join(', '));
 }
 
-// ── MANUAL POINTAGE ──
-window.openManualModal = function() {
-  // Populate worker select
-  const sel = document.getElementById('manualWorker');
-  sel.innerHTML = allWorkers.map(w => '<option value="'+w.id+'">'+w.name+'</option>').join('');
-  // Set today's date
-  document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('manualAddr').value = '';
-  document.getElementById('manualModal').classList.add('open');
-};
-
-window.confirmManual = async function() {
-  const wId = document.getElementById('manualWorker').value;
-  const type = document.getElementById('manualType').value;
-  const date = document.getElementById('manualDate').value;
-  const time = document.getElementById('manualTime').value;
-  const addr = document.getElementById('manualAddr').value.trim();
-
-  if (!wId) { showToast('Choisis un worker'); return; }
-  if (!date) { showToast('Entre une date'); return; }
-  if (!addr) { showToast('Entre une adresse'); return; }
-
-  const w = allWorkers.find(x => x.id === wId);
-  const entryId = wId + '_' + type + '_' + date + '_manual';
-
-  const entry = {
-    workerId: wId,
-    workerName: w.name,
-    type: type,
-    date: date,
-    address: addr,
-    gps: null,
-    photo: null,
-    time: time,
-    timestamp: new Date(date+'T'+time).getTime(),
-    manual: true
-  };
-
-  try {
-    await setDoc(doc(db, 'entries', entryId), entry);
-    // If start — increment totalDays
-    if (type === 'start') {
-      const newTotal = (w.totalDays||0) + 1;
-      await setDoc(doc(db, 'workers', wId), {totalDays: newTotal}, {merge: true});
-    }
-    document.getElementById('manualModal').classList.remove('open');
-    showToast('✅ Pointage ajouté pour ' + w.name + ' le ' + date);
-  } catch(err) {
-    showToast('❌ Erreur: ' + err.message);
-  }
-};
-
 // ── MODAL CLOSE ──
 document.getElementById('manualModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
-document.getElementById('manualModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
-document.getElementById('payModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
 document.getElementById('editModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
-document.getElementById('manualModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
 
 // ── BOOT ──
 async function boot(){
