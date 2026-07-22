@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Get Your Shift">
 <title>Get Your Shift</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
 :root {
   --cream:#f4f1eb; --cream2:#ede9e0; --forest:#2d4a2d; --forest-light:#3d6b3d;
@@ -92,6 +93,8 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 .tab-item{flex:1;padding:10px 8px 8px;text-align:center;cursor:pointer;color:var(--text-soft);}
 .tab-item.active{color:var(--forest);}
 .tab-icon{font-size:20px;}
+.tab-icon-wrap{position:relative;display:inline-block;}
+.tab-badge{position:absolute;top:-5px;right:-10px;background:var(--gold);color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:15px;height:15px;padding:0 3px;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,0.25);}
 .tab-label{font-size:9px;letter-spacing:0.8px;text-transform:uppercase;margin-top:2px;font-weight:500;}
 
 /* Tab content */
@@ -101,6 +104,19 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 /* Cards */
 .card{background:var(--white);border-radius:var(--radius);padding:18px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);}
 .card-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-soft);margin-bottom:12px;font-weight:500;}
+
+/* Carte des chantiers */
+.dispo-map-card{border-radius:var(--radius);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);}
+#dispoMap{height:260px;width:100%;background:var(--cream2);}
+.leaflet-control-zoom a{color:var(--forest) !important;}
+.leaflet-control-attribution{font-size:9px !important;}
+
+/* Dispo preview (home) */
+.dispo-preview{background:linear-gradient(135deg,var(--sage) 0%,var(--forest) 100%);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;box-shadow:0 8px 24px rgba(45,74,45,0.2);}
+.dispo-preview-num{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:var(--cream);line-height:1.3;}
+.dispo-preview-num strong{font-size:22px;}
+.dispo-preview-sub{font-size:11px;color:rgba(244,241,235,0.75);margin-top:2px;}
+.dispo-preview-arrow{color:var(--cream);font-size:20px;flex-shrink:0;}
 
 /* Bento */
 .bento-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
@@ -344,8 +360,8 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
     <div class="tab-bar">
       <div class="tab-item active" id="tabHome" onclick="switchTab('home')"><div class="tab-icon">🏠</div><div class="tab-label">Accueil</div></div>
+      <div class="tab-item" id="tabDispos" onclick="switchTab('dispos')"><div class="tab-icon-wrap"><div class="tab-icon">📅</div><div class="tab-badge" id="dispoBadge" style="display:none;"></div></div><div class="tab-label">Dispos</div></div>
       <div class="tab-item" id="tabPointage" onclick="switchTab('pointage')"><div class="tab-icon">📍</div><div class="tab-label">Pointage</div></div>
-      <div class="tab-item" id="tabDispos" onclick="switchTab('dispos')"><div class="tab-icon">📅</div><div class="tab-label">Dispos</div></div>
       <div class="tab-item" id="tabGalerie" onclick="switchTab('galerie')"><div class="tab-icon">📸</div><div class="tab-label">Galerie</div></div>
       <div class="tab-item" id="tabRecap" onclick="switchTab('recap')"><div class="tab-icon">💰</div><div class="tab-label">Paye</div></div>
       <div class="tab-item" id="tabProfil" onclick="switchTab('profil')"><div class="tab-icon">👤</div><div class="tab-label">Profil</div></div>
@@ -353,6 +369,13 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
     <!-- HOME -->
     <div class="tab-content active" id="tab-home">
+      <div class="dispo-preview" id="dispoPreview" style="display:none;" onclick="switchTab('dispos')">
+        <div>
+          <div class="dispo-preview-num"><strong id="dispoPreviewCount">0</strong> chantier(s) dispo cette semaine</div>
+          <div class="dispo-preview-sub">Touche pour voir le planning</div>
+        </div>
+        <div class="dispo-preview-arrow">→</div>
+      </div>
       <div class="bento-grid">
         <div class="bento-card bento-dark">
           <div class="bento-lbl">Cette semaine</div>
@@ -428,6 +451,9 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
     <!-- DISPOS -->
     <div class="tab-content" id="tab-dispos">
+      <div class="dispo-map-card">
+        <div id="dispoMap"></div>
+      </div>
       <div class="card" style="margin-bottom:12px;">
         <div class="card-label">Créneaux disponibles</div>
         <div id="dispoSlotsList"></div>
@@ -539,31 +565,52 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title" id="slotDetailDate"></div>
-    <div class="modal-sub">Détails de ta journée</div>
+    <div class="modal-sub" id="slotDetailSub">Détails de ta journée</div>
 
     <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
-      <div style="font-size:14px;color:var(--text-dark);font-weight:600;margin-bottom:4px;">🕖 7h00 – 15h30</div>
+      <div style="font-size:14px;color:var(--text-dark);font-weight:600;margin-bottom:4px;" id="slotDetailHours">🕖 7h00 – 15h30</div>
       <div style="font-size:12px;color:var(--text-soft);">30 min de pause à midi</div>
       <div style="font-size:12px;color:var(--sage);margin-top:8px;">🍽️ Pense à prévoir de quoi manger !</div>
     </div>
 
-    <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:5px;">Adresse du chantier</div>
-    <div style="display:flex;gap:8px;">
-      <input class="addr-input" id="slotDetailAddr" readonly style="flex:1;">
-      <button onclick="copySlotAddress()" style="background:var(--cream2);border:1.5px solid var(--border);border-radius:12px;padding:0 16px;font-size:16px;cursor:pointer;height:48px;">📋</button>
+    <div id="slotDetailWorkWrap" style="display:none;margin-bottom:14px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:5px;">🛠️ Travail à faire</div>
+      <div id="slotDetailWork" style="background:var(--cream2);border-radius:12px;padding:12px;font-size:13px;color:var(--text-dark);line-height:1.5;"></div>
     </div>
-    <a id="slotDetailMaps" href="#" target="_blank" style="display:block;font-size:12px;color:var(--sage);text-decoration:underline;margin:-6px 0 14px;">Ouvrir dans Google Maps →</a>
+
+    <div id="slotDetailAddrWrap">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:5px;">Adresse du chantier</div>
+      <div style="display:flex;gap:8px;">
+        <input class="addr-input" id="slotDetailAddr" readonly style="flex:1;">
+        <button onclick="copySlotAddress()" style="background:var(--cream2);border:1.5px solid var(--border);border-radius:12px;padding:0 16px;font-size:16px;cursor:pointer;height:48px;">📋</button>
+      </div>
+      <a id="slotDetailMaps" href="#" target="_blank" style="display:block;font-size:12px;color:var(--sage);text-decoration:underline;margin:-6px 0 14px;">Ouvrir dans Google Maps →</a>
+    </div>
+
+    <div id="slotDetailSuburbWrap" style="display:none;margin-bottom:14px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:5px;">Zone</div>
+      <div id="slotDetailSuburb" style="font-size:15px;color:var(--text-dark);font-weight:600;"></div>
+      <div style="font-size:11px;color:var(--text-soft);margin-top:2px;">📍 L'adresse exacte apparaît une fois ta place confirmée</div>
+    </div>
+
+    <div id="slotDetailPlacesWrap" style="display:none;margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--sage);font-weight:500;" id="slotDetailPlaces"></div>
+    </div>
 
     <div id="slotDetailNotesWrap" style="display:none;margin-bottom:14px;">
       <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:5px;">📌 Précisions pour cette journée</div>
       <div id="slotDetailNotes" style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:12px;padding:12px;font-size:13px;color:var(--text-dark);line-height:1.5;"></div>
     </div>
 
+    <button class="confirm-btn" id="slotDetailJoinBtn" style="display:none;">S'inscrire</button>
     <button class="confirm-btn" onclick="document.getElementById('slotDetailModal').classList.remove('open')">Fermer</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- CARTE (Leaflet + OpenStreetMap, gratuit, sans clé API) -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <!-- FIREBASE -->
 <script type="module">
@@ -598,6 +645,7 @@ let allSlots = [];
 let myCancelRequests = [];
 let unsubSlots = null, unsubMyCancelReqs = null;
 let cancelingSlotId = null;
+let addrCache = {}; // fetched on-demand, only for slots the worker is confirmed on
 
 // ── UTILS ──
 function todayStr() {
@@ -970,6 +1018,72 @@ window.viewPhoto = function(entryId) {
 };
 
 // ── DISPOS (planning de créneaux) ──
+// L'adresse complète (et ses coordonnées exactes) n'est jamais chargée pour un créneau
+// non confirmé : seuls le suburb et son centre approximatif (déjà présents dans le doc
+// "slots") sont diffusés à tous. Les infos exactes vivent dans "slotAddresses" et ne
+// sont récupérées à la demande que pour les créneaux où le worker est inscrit (confirmé).
+function getSlotAddressInfo(slotId) {
+  if (addrCache[slotId] !== undefined) return addrCache[slotId];
+  addrCache[slotId] = null; // avoid duplicate fetches while loading
+  getDoc(doc(db,'slotAddresses',slotId)).then(snap => {
+    addrCache[slotId] = snap.exists() ? snap.data() : {address:'', lat:null, lng:null};
+    renderDispos();
+  });
+  return null;
+}
+
+// Une dispo n'est ouverte à l'inscription que jusqu'à 7h00 le matin du jour concerné.
+function isSlotOpenForSignup(s) {
+  return new Date() < new Date(s.date+'T07:00:00');
+}
+
+// ── CARTE (Leaflet + OpenStreetMap) ──
+let dispoMapInstance = null, dispoMapLayer = null;
+const MAP_DEFAULT_CENTER = [-33.85, 151.21]; // Sydney, ajuste si besoin
+
+function initDispoMapIfNeeded() {
+  if (dispoMapInstance || !window.L || !document.getElementById('dispoMap')) return;
+  dispoMapInstance = L.map('dispoMap', {attributionControl:true}).setView(MAP_DEFAULT_CENTER, 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+  }).addTo(dispoMapInstance);
+  dispoMapLayer = L.layerGroup().addTo(dispoMapInstance);
+}
+
+function updateDispoMap(available, mine) {
+  if (!window.L) return;
+  initDispoMapIfNeeded();
+  if (!dispoMapInstance) return;
+  dispoMapLayer.clearLayers();
+  const bounds = [];
+
+  // Créneaux non confirmés : cercle approximatif centré sur le suburb, jamais l'adresse exacte.
+  available.forEach(s => {
+    if (s.suburbLat==null || s.suburbLng==null) return;
+    const circle = L.circle([s.suburbLat, s.suburbLng], {
+      radius: 700, color: '#2d4a2d', weight: 2, fillColor: '#7a9e7a', fillOpacity: 0.35
+    }).addTo(dispoMapLayer);
+    circle.on('click', () => openSlotDetails(s.id));
+    bounds.push([s.suburbLat, s.suburbLng]);
+  });
+
+  // Créneaux confirmés : marqueur précis à l'adresse exacte (chargée à la demande).
+  mine.forEach(s => {
+    const info = getSlotAddressInfo(s.id);
+    if (!info || info.lat==null || info.lng==null) return;
+    const marker = L.circleMarker([info.lat, info.lng], {
+      radius: 9, color: '#2d4a2d', weight: 2, fillColor: '#2d4a2d', fillOpacity: 0.9
+    }).addTo(dispoMapLayer);
+    marker.on('click', () => openSlotDetails(s.id));
+    bounds.push([info.lat, info.lng]);
+  });
+
+  if (bounds.length) dispoMapInstance.fitBounds(bounds, {padding:[30,30], maxZoom:13});
+  else dispoMapInstance.setView(MAP_DEFAULT_CENTER, 10);
+  setTimeout(() => dispoMapInstance && dispoMapInstance.invalidateSize(), 200);
+}
+
 function renderDispos() {
   if (!currentWorker) return;
   const today = todayStr();
@@ -977,36 +1091,67 @@ function renderDispos() {
 
   const available = upcoming.filter(s => {
     const signups = s.signups||[];
-    return signups.length < s.capacity && !signups.some(su=>su.workerId===currentWorker.id);
+    return signups.length < s.capacity && !signups.some(su=>su.workerId===currentWorker.id) && isSlotOpenForSignup(s);
   });
   const mine = upcoming.filter(s => (s.signups||[]).some(su=>su.workerId===currentWorker.id));
+
+  updateDispoMap(available, mine);
 
   const availEl = document.getElementById('dispoSlotsList');
   if (availEl) availEl.innerHTML = available.length ? available.map(s => {
     const left = s.capacity - (s.signups||[]).length;
     return '<div class="recap-day"><div class="recap-day-date">'+formatDate(s.date)+'</div>' +
-      '<div class="recap-day-addr"><a href="'+mapsLink(s.address)+'" target="_blank" style="color:var(--sage);text-decoration:underline;">📍 '+s.address+'</a><br><span style="font-size:10px;color:var(--text-soft);">'+left+' place(s) restante(s)</span></div>' +
+      '<div class="recap-day-addr">📍 '+(s.suburb||'')+'<br><span style="font-size:10px;color:var(--text-soft);">'+left+' place(s) restante(s) · adresse exacte après inscription</span></div>' +
       '<button onclick="joinSlot(\''+s.id+'\')" style="background:var(--forest);color:var(--cream);border:none;border-radius:10px;padding:8px 14px;font-size:12px;cursor:pointer;">S\'inscrire</button>' +
       '</div>';
   }).join('') : '<div style="color:var(--text-soft);font-size:13px;text-align:center;padding:12px;">Aucun créneau disponible</div>';
 
+  // Badge (onglet) + aperçu accueil
+  const badgeEl = document.getElementById('dispoBadge');
+  if (badgeEl) {
+    if (available.length) { badgeEl.textContent = available.length; badgeEl.style.display = 'flex'; }
+    else { badgeEl.style.display = 'none'; }
+  }
+  const weekEnd = getWeekEnd(0);
+  const weekCount = available.filter(s => new Date(s.date+'T00:00:00') <= weekEnd).length;
+  const previewEl = document.getElementById('dispoPreview');
+  if (previewEl) {
+    if (weekCount) { document.getElementById('dispoPreviewCount').textContent = weekCount; previewEl.style.display = 'flex'; }
+    else { previewEl.style.display = 'none'; }
+  }
+
   const mineEl = document.getElementById('mySlotsList');
   if (mineEl) mineEl.innerHTML = mine.length ? mine.map(s => {
     const pending = myCancelRequests.find(r=>r.slotId===s.id && r.status==='pending');
+    const info = getSlotAddressInfo(s.id);
+    const addrHtml = info === null
+      ? '<span style="color:var(--text-soft);">Chargement de l\'adresse…</span>'
+      : '<a href="'+mapsLink(info.address)+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--sage);text-decoration:underline;">📍 '+info.address+'</a>';
     return '<div class="recap-day" style="cursor:pointer;" onclick="openSlotDetails(\''+s.id+'\')">' +
       '<div class="recap-day-date">'+formatDate(s.date)+'</div>' +
-      '<div class="recap-day-addr"><a href="'+mapsLink(s.address)+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--sage);text-decoration:underline;">📍 '+s.address+'</a>'+(s.notes?' <span style="color:var(--gold);">· 📌 précisions</span>':'')+'</div>' +
+      '<div class="recap-day-addr">'+addrHtml+(s.notes?' <span style="color:var(--gold);">· 📌 précisions</span>':'')+'</div>' +
       (pending ? '<div style="font-size:11px;color:var(--gold);font-weight:500;">⏳ En attente</div>' : '<button onclick="event.stopPropagation();leaveSlot(\''+s.id+'\')" style="background:none;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:7px 12px;font-size:12px;cursor:pointer;">Se désinscrire</button>') +
       '</div>';
   }).join('') : '<div style="color:var(--text-soft);font-size:13px;text-align:center;padding:12px;">Aucune inscription</div>';
 }
 
-window.openSlotDetails = function(slotId) {
+window.openSlotDetails = async function(slotId) {
   const slot = allSlots.find(s=>s.id===slotId);
   if (!slot) return;
+  const confirmed = (slot.signups||[]).some(su=>su.workerId===currentWorker.id);
+
   document.getElementById('slotDetailDate').textContent = formatDate(slot.date);
-  document.getElementById('slotDetailAddr').value = slot.address;
-  document.getElementById('slotDetailMaps').href = mapsLink(slot.address);
+  document.getElementById('slotDetailSub').textContent = confirmed ? 'Détails de ta journée' : 'Détails du créneau';
+  document.getElementById('slotDetailHours').textContent = '🕖 '+(slot.hours || '7h00 – 15h30');
+
+  const workWrap = document.getElementById('slotDetailWorkWrap');
+  if (slot.workDescription) {
+    workWrap.style.display = 'block';
+    document.getElementById('slotDetailWork').textContent = slot.workDescription;
+  } else {
+    workWrap.style.display = 'none';
+  }
+
   const notesWrap = document.getElementById('slotDetailNotesWrap');
   if (slot.notes) {
     notesWrap.style.display = 'block';
@@ -1014,7 +1159,39 @@ window.openSlotDetails = function(slotId) {
   } else {
     notesWrap.style.display = 'none';
   }
+
+  const addrWrap = document.getElementById('slotDetailAddrWrap');
+  const suburbWrap = document.getElementById('slotDetailSuburbWrap');
+  const placesWrap = document.getElementById('slotDetailPlacesWrap');
+  const joinBtn = document.getElementById('slotDetailJoinBtn');
+
   document.getElementById('slotDetailModal').classList.add('open');
+
+  if (confirmed) {
+    addrWrap.style.display = 'block';
+    suburbWrap.style.display = 'none';
+    placesWrap.style.display = 'none';
+    joinBtn.style.display = 'none';
+    document.getElementById('slotDetailAddr').value = 'Chargement…';
+    if (addrCache[slotId] === undefined || addrCache[slotId] === null) {
+      const snap = await getDoc(doc(db,'slotAddresses',slotId));
+      addrCache[slotId] = snap.exists() ? snap.data() : {address:'', lat:null, lng:null};
+    }
+    document.getElementById('slotDetailAddr').value = addrCache[slotId].address;
+    document.getElementById('slotDetailMaps').href = mapsLink(addrCache[slotId].address);
+  } else {
+    addrWrap.style.display = 'none';
+    suburbWrap.style.display = 'block';
+    document.getElementById('slotDetailSuburb').textContent = '📍 '+(slot.suburb||'');
+    const left = slot.capacity - (slot.signups||[]).length;
+    placesWrap.style.display = 'block';
+    document.getElementById('slotDetailPlaces').textContent = left+' place(s) restante(s)';
+    joinBtn.style.display = (left>0 && isSlotOpenForSignup(slot)) ? 'block' : 'none';
+    joinBtn.onclick = function() {
+      document.getElementById('slotDetailModal').classList.remove('open');
+      joinSlot(slotId);
+    };
+  }
 };
 
 window.copySlotAddress = function() {
@@ -1025,6 +1202,7 @@ window.copySlotAddress = function() {
 window.joinSlot = async function(slotId) {
   const slot = allSlots.find(s=>s.id===slotId);
   if (!slot) return;
+  if (!isSlotOpenForSignup(slot)) { showToast('Ce créneau n\'est plus ouvert aux inscriptions'); return; }
   const signups = slot.signups||[];
   if (signups.length >= slot.capacity) { showToast('Ce créneau est complet'); return; }
   if (signups.some(su=>su.workerId===currentWorker.id)) { showToast('Tu es déjà inscrit à ce créneau'); return; }
@@ -1061,7 +1239,7 @@ window.submitLateCancel = async function() {
     workerName: currentWorker.name,
     slotId: cancelingSlotId,
     slotDate: slot.date,
-    slotAddress: slot.address,
+    slotSuburb: slot.suburb,
     reason,
     requestedAt: Date.now(),
     status: 'pending',
@@ -1160,7 +1338,7 @@ window.switchTab = function(id) {
   document.getElementById('tab-'+id).classList.add('active');
   if (id==='profil') renderProfil();
   if (id==='galerie') renderPointage();
-  if (id==='dispos') renderDispos();
+  if (id==='dispos') { renderDispos(); setTimeout(() => dispoMapInstance && dispoMapInstance.invalidateSize(), 50); }
 };
 
 // ── MODAL POINTAGE ──

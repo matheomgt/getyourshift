@@ -429,7 +429,25 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
     <div class="expand-panel" id="newSlotPanel">
       <div class="card-title">Nouveau créneau</div>
       <label class="inp-lbl">Adresse du chantier</label>
-      <input class="inp" id="nsAddr" placeholder="ex: 1080 Oxford Falls Rd">
+      <input class="inp" id="nsAddr" placeholder="ex: 1080 Oxford Falls Rd" onblur="autoGeocodeAddress()">
+      <div class="inp-row">
+        <div><label class="inp-lbl">Latitude exacte</label><input class="inp" id="nsAddrLat" type="number" step="any" placeholder="auto"></div>
+        <div><label class="inp-lbl">Longitude exacte</label><input class="inp" id="nsAddrLng" type="number" step="any" placeholder="auto"></div>
+      </div>
+      <div id="nsAddrGeoStatus" style="font-size:11px;color:var(--text-soft);margin:-8px 0 10px;"></div>
+
+      <label class="inp-lbl">Suburb (visible par les workers avant confirmation)</label>
+      <input class="inp" id="nsSuburb" placeholder="ex: Mosman" onblur="autoGeocodeSuburb()">
+      <div class="inp-row">
+        <div><label class="inp-lbl">Latitude suburb (approx.)</label><input class="inp" id="nsSuburbLat" type="number" step="any" placeholder="auto"></div>
+        <div><label class="inp-lbl">Longitude suburb (approx.)</label><input class="inp" id="nsSuburbLng" type="number" step="any" placeholder="auto"></div>
+      </div>
+      <div id="nsSuburbGeoStatus" style="font-size:11px;color:var(--text-soft);margin:-8px 0 10px;"></div>
+
+      <label class="inp-lbl">Description du travail</label>
+      <input class="inp" id="nsWork" placeholder="ex: Débroussaillage + tonte">
+      <label class="inp-lbl">Horaires</label>
+      <input class="inp" id="nsHours" placeholder="ex: 7h00 - 15h30">
       <div class="inp-row">
         <div><label class="inp-lbl">Date</label><input class="inp" id="nsDate" type="date"></div>
         <div><label class="inp-lbl">Places</label><input class="inp" id="nsCapacity" type="number" placeholder="1"></div>
@@ -553,8 +571,8 @@ let galFilter = 'all';
 let currentFicheId = null;
 let ficheCalOff = 0;
 let editingWorkerId = null;
-let allSlots = [], allCancelRequests = [];
-let unsubWorkers = null, unsubEntries = null, unsubSlots = null, unsubCancelReqs = null;
+let allSlots = [], allCancelRequests = [], allSlotAddresses = {};
+let unsubWorkers = null, unsubEntries = null, unsubSlots = null, unsubSlotAddresses = null, unsubCancelReqs = null;
 
 // ── UTILS ──
 function todayStr() {
@@ -616,6 +634,7 @@ document.getElementById('lockBtn').addEventListener('click', () => {
   if(unsubWorkers){unsubWorkers();unsubWorkers=null;}
   if(unsubEntries){unsubEntries();unsubEntries=null;}
   if(unsubSlots){unsubSlots();unsubSlots=null;}
+  if(unsubSlotAddresses){unsubSlotAddresses();unsubSlotAddresses=null;}
   if(unsubCancelReqs){unsubCancelReqs();unsubCancelReqs=null;}
   document.getElementById('appMain').style.display='none';
   document.getElementById('pinScreen').style.display='flex';
@@ -654,6 +673,14 @@ async function initAdmin() {
     allSlots=[];
     snap.forEach(d=>allSlots.push({id:d.id,...d.data()}));
     allSlots.sort((a,b)=>a.date.localeCompare(b.date));
+    refreshCurrentTab();
+    setSyncing(false);
+  });
+
+  if(unsubSlotAddresses) unsubSlotAddresses();
+  unsubSlotAddresses = onSnapshot(collection(db,'slotAddresses'), snap => {
+    allSlotAddresses={};
+    snap.forEach(d=>allSlotAddresses[d.id]=d.data().address);
     refreshCurrentTab();
     setSyncing(false);
   });
@@ -854,6 +881,14 @@ window.deleteEntry = async function(id) {
     if (w) {
       const newTotal = Math.max(0, (w.totalDays||0) - 1);
       await setDoc(doc(db,'workers',entry.workerId), {totalDays: newTotal}, {merge: true});
+    }
+    // Rouvre la place du créneau lié et retire le créneau de l'agenda du worker
+    if (entry.slotId) {
+      const slot = allSlots.find(s => s.id === entry.slotId);
+      if (slot) {
+        const signups = (slot.signups||[]).filter(su => su.workerId !== entry.workerId);
+        await setDoc(doc(db,'slots',entry.slotId), {signups}, {merge:true});
+      }
     }
   }
   showToast('Supprimé');
@@ -1111,17 +1146,90 @@ window.addPayment = async function(wId){
 // ── PLANNING (créneaux) ──
 window.toggleNewSlot = function(){document.getElementById('newSlotPanel').classList.toggle('open');};
 
+// Géocodage gratuit via Nominatim (OpenStreetMap), sans clé API. Best-effort : si ça échoue,
+// le créneau se crée quand même mais sans marqueur sur la carte (les champs restent modifiables).
+const GEOCODE_REGION_HINT = 'NSW, Australia';
+
+async function geocodeQuery(q) {
+  try {
+    const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));
+    const data = await res.json();
+    if (data && data[0]) return {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
+  } catch(e) {}
+  return null;
+}
+
+window.autoGeocodeSuburb = async function() {
+  const suburb = document.getElementById('nsSuburb').value.trim();
+  if (!suburb) return;
+  const statusEl = document.getElementById('nsSuburbGeoStatus');
+  statusEl.textContent = '📍 Localisation en cours…';
+  const q = suburb.includes(',') ? suburb : suburb+', '+GEOCODE_REGION_HINT;
+  const loc = await geocodeQuery(q);
+  if (loc) {
+    document.getElementById('nsSuburbLat').value = loc.lat;
+    document.getElementById('nsSuburbLng').value = loc.lng;
+    statusEl.textContent = '📍 Localisé automatiquement — corrige si besoin';
+  } else {
+    statusEl.textContent = '⚠️ Non trouvé — entre les coordonnées manuellement pour afficher un cercle sur la carte';
+  }
+};
+
+window.autoGeocodeAddress = async function() {
+  const addr = document.getElementById('nsAddr').value.trim();
+  const suburb = document.getElementById('nsSuburb').value.trim();
+  if (!addr) return;
+  const statusEl = document.getElementById('nsAddrGeoStatus');
+  statusEl.textContent = '📍 Localisation en cours…';
+  const q = addr+(suburb?', '+suburb:'')+', '+GEOCODE_REGION_HINT;
+  const loc = await geocodeQuery(q);
+  if (loc) {
+    document.getElementById('nsAddrLat').value = loc.lat;
+    document.getElementById('nsAddrLng').value = loc.lng;
+    statusEl.textContent = '📍 Localisé automatiquement — corrige si besoin';
+  } else {
+    statusEl.textContent = '⚠️ Non trouvé — entre les coordonnées manuellement pour afficher un marqueur précis sur la carte';
+  }
+};
+
 window.createSlot = async function(){
   const address=document.getElementById('nsAddr').value.trim();
+  const suburb=document.getElementById('nsSuburb').value.trim();
   const date=document.getElementById('nsDate').value;
   const capacity=parseInt(document.getElementById('nsCapacity').value)||0;
   const notes=document.getElementById('nsNotes').value.trim();
+  const workDescription=document.getElementById('nsWork').value.trim();
+  const hours=document.getElementById('nsHours').value.trim();
+  const suburbLat=parseFloat(document.getElementById('nsSuburbLat').value);
+  const suburbLng=parseFloat(document.getElementById('nsSuburbLng').value);
+  const addrLat=parseFloat(document.getElementById('nsAddrLat').value);
+  const addrLng=parseFloat(document.getElementById('nsAddrLng').value);
   if(!address){showToast('Entre une adresse');return;}
+  if(!suburb){showToast('Entre le suburb');return;}
   if(!date){showToast('Choisis une date');return;}
   if(capacity<1){showToast('Entre un nombre de places (min 1)');return;}
   const slotId='slot_'+Date.now();
-  await setDoc(doc(db,'slots',slotId),{address,date,capacity,notes,signups:[],createdAt:Date.now()});
+  await setDoc(doc(db,'slots',slotId),{
+    date,suburb,capacity,notes,workDescription,hours,
+    suburbLat: isNaN(suburbLat)?null:suburbLat,
+    suburbLng: isNaN(suburbLng)?null:suburbLng,
+    signups:[],createdAt:Date.now()
+  });
+  await setDoc(doc(db,'slotAddresses',slotId),{
+    address,
+    lat: isNaN(addrLat)?null:addrLat,
+    lng: isNaN(addrLng)?null:addrLng
+  });
   document.getElementById('nsAddr').value='';
+  document.getElementById('nsAddrLat').value='';
+  document.getElementById('nsAddrLng').value='';
+  document.getElementById('nsAddrGeoStatus').textContent='';
+  document.getElementById('nsSuburb').value='';
+  document.getElementById('nsSuburbLat').value='';
+  document.getElementById('nsSuburbLng').value='';
+  document.getElementById('nsSuburbGeoStatus').textContent='';
+  document.getElementById('nsWork').value='';
+  document.getElementById('nsHours').value='';
   document.getElementById('nsDate').value='';
   document.getElementById('nsCapacity').value='';
   document.getElementById('nsNotes').value='';
@@ -1138,6 +1246,7 @@ window.saveSlotNotes = async function(slotId){
 window.deleteSlot = async function(slotId){
   if(!confirm('Supprimer ce créneau ?')) return;
   await deleteDoc(doc(db,'slots',slotId));
+  await deleteDoc(doc(db,'slotAddresses',slotId));
   showToast('Supprimé');
 };
 
@@ -1149,7 +1258,7 @@ function renderPlanning(){
     reqCard.style.display='block';
     document.getElementById('cancelReqList').innerHTML=pending.map(r=>
       '<div style="padding:10px 0;border-bottom:1px solid var(--cream2);">' +
-      '<div style="font-size:13px;font-weight:500;color:var(--text-dark);">'+r.workerName+' · '+formatDate(r.slotDate)+' · '+r.slotAddress+'</div>' +
+      '<div style="font-size:13px;font-weight:500;color:var(--text-dark);">'+r.workerName+' · '+formatDate(r.slotDate)+' · '+(r.slotSuburb||allSlotAddresses[r.slotId]||'')+'</div>' +
       '<div style="font-size:12px;color:var(--text-soft);margin:4px 0 8px;">Raison : '+r.reason+'</div>' +
       '<div class="btn-row" style="margin-top:0;">' +
       '<button class="btn btn-sage" onclick="approveCancelRequest(\''+r.id+'\')">✅ Approuver</button>' +
@@ -1167,12 +1276,15 @@ function renderPlanning(){
     const signups=s.signups||[];
     const pendingForSlot=pending.filter(r=>r.slotId===s.id).map(r=>r.workerId);
     const namesHtml=signups.length ? signups.map(su=>'<div style="font-size:12px;color:var(--text-mid);padding:3px 0;">👷 '+su.workerName+(pendingForSlot.includes(su.workerId)?' <span style="color:var(--gold);">⏳ annulation en attente</span>':'')+'</div>').join('') : '<div style="font-size:12px;color:var(--text-soft);padding:3px 0;">Personne inscrit</div>';
+    const fullAddr = allSlotAddresses[s.id] || s.suburb || '';
+    const workLine = (s.workDescription||s.hours) ? '<div style="font-size:12px;color:var(--text-mid);margin:4px 0;">'+(s.hours?'🕖 '+s.hours+' · ':'')+(s.workDescription||'')+'</div>' : '';
     return '<div class="worker-card">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
       '<div><div class="worker-name">'+formatDate(s.date)+'</div>' +
-      '<a href="'+mapsLink(s.address)+'" target="_blank" style="font-size:12px;color:var(--sage);text-decoration:underline;">📍 '+s.address+'</a></div>' +
+      '<a href="'+mapsLink(fullAddr)+'" target="_blank" style="font-size:12px;color:var(--sage);text-decoration:underline;">📍 '+fullAddr+' <span style="color:var(--text-soft);">('+s.suburb+')</span></a></div>' +
       '<div class="rate-badge normal">'+signups.length+'/'+s.capacity+'</div>' +
       '</div>' +
+      workLine +
       namesHtml +
       '<div style="margin-top:10px;">' +
       '<label class="inp-lbl">Précisions pour cette journée</label>' +
@@ -1282,6 +1394,16 @@ window.confirmManualEntry = async function() {
     return;
   }
 
+  // Si un créneau du planning existe ce jour-là, on lie l'entrée pour synchroniser les places
+  let matchedSlot = null;
+  if (manualType === 'start') {
+    const slotsForDate = allSlots.filter(s => s.date === date);
+    if (slotsForDate.length === 1) matchedSlot = slotsForDate[0];
+    else if (slotsForDate.length > 1) {
+      matchedSlot = slotsForDate.find(s => (allSlotAddresses[s.id]||'').trim().toLowerCase() === addr.toLowerCase()) || null;
+    }
+  }
+
   setSyncing(true);
   const entryId = wId+'_'+manualType+'_'+date;
   const entry = {
@@ -1294,7 +1416,8 @@ window.confirmManualEntry = async function() {
     photo: null,
     time: time,
     timestamp: new Date(date).getTime(),
-    manual: true
+    manual: true,
+    slotId: matchedSlot ? matchedSlot.id : null
   };
 
   try {
@@ -1306,8 +1429,16 @@ window.confirmManualEntry = async function() {
       await setDoc(doc(db, 'workers', wId), {totalDays: newTotal}, {merge: true});
     }
 
+    // Décrémente les places du créneau et fait apparaître le créneau dans l'agenda du worker
+    if (matchedSlot) {
+      const signups = matchedSlot.signups || [];
+      if (!signups.some(su => su.workerId === wId)) {
+        await setDoc(doc(db,'slots',matchedSlot.id), {signups:[...signups,{workerId:wId, workerName:w.name, signedUpAt:Date.now()}]}, {merge:true});
+      }
+    }
+
     document.getElementById('manualModal').classList.remove('open');
-    showToast('✅ Jour ajouté manuellement !');
+    showToast(matchedSlot ? '✅ Jour ajouté et lié au créneau du planning !' : '✅ Jour ajouté manuellement !');
   } catch(err) {
     showToast('❌ Erreur: ' + err.message);
     setSyncing(false);
