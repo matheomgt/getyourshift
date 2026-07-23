@@ -286,12 +286,12 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
   <div class="tab-bar-top">
     <div class="tbt active" id="tbt-dashboard" onclick="showTab('dashboard')">📊 Dashboard</div>
-    <div class="tbt" id="tbt-workers" onclick="showTab('workers')">👷 Équipe</div>
+    <div class="tbt" id="tbt-planning" onclick="showTab('planning')">📅 Planning<span id="planningBadge" style="display:none;background:var(--danger);color:#fff;border-radius:20px;padding:1px 6px;font-size:9px;margin-left:4px;"></span></div>
     <div class="tbt" id="tbt-pointages" onclick="showTab('pointages')">📍 Pointages</div>
+    <div class="tbt" id="tbt-workers" onclick="showTab('workers')">👷 Équipe</div>
     <div class="tbt" id="tbt-galerie" onclick="showTab('galerie')">📸 Galerie</div>
     <div class="tbt" id="tbt-fiches" onclick="showTab('fiches')">📋 Fiches</div>
     <div class="tbt" id="tbt-paiements" onclick="showTab('paiements')">💰 Paiements</div>
-    <div class="tbt" id="tbt-planning" onclick="showTab('planning')">📅 Planning<span id="planningBadge" style="display:none;background:var(--danger);color:#fff;border-radius:20px;padding:1px 6px;font-size:9px;margin-left:4px;"></span></div>
     <div class="tbt" id="tbt-settings" onclick="showTab('settings')">⚙️ Réglages</div>
   </div>
 
@@ -301,6 +301,15 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <button class="wnav-btn" onclick="changeWeek(-1)">‹</button>
       <div class="wnav-lbl" id="dashWeekLbl"></div>
       <button class="wnav-btn" onclick="changeWeek(1)">›</button>
+    </div>
+    <div class="card" style="cursor:pointer;margin-bottom:10px;" onclick="openTodayPointages()">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">📍 Pointages aujourd'hui</div>
+          <div id="todayPointageSub" style="font-size:11px;color:var(--text-soft);"></div>
+        </div>
+        <div class="rate-badge normal" id="todayPointageBadge" style="font-size:15px;padding:6px 14px;white-space:nowrap;"></div>
+      </div>
     </div>
     <div class="commission-block">
       <div class="comm-lbl">Ta commission</div>
@@ -348,6 +357,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <button class="wnav-btn" onclick="changePtgWeek(1)">›</button>
     </div>
     <button class="btn btn-forest" onclick="openManualModal()" style="margin-bottom:12px;">+ Ajouter un pointage manuellement</button>
+    <div id="ptgDayFilterPill" style="display:none;"></div>
     <div class="card">
       <div class="card-title">Tous les pointages</div>
       <div id="ptgList"></div>
@@ -594,7 +604,7 @@ const db = getFirestore(app);
 const ADMIN_PIN_KEY = 'gys_admin_pin';
 let allWorkers = [];
 let allEntries = [];
-let dashWeekOff=0, ptgWeekOff=0, galWeekOff=0;
+let dashWeekOff=0, ptgWeekOff=0, galWeekOff=0, ptgDayFilter=null;
 let planWeekOff=0, planViewMode='week', planSelectedDate=todayStr();
 let galFilter = 'all';
 let currentFicheId = null;
@@ -755,7 +765,16 @@ function renderTab(id) {
 
 // ── WEEK HELPERS ──
 window.changeWeek = function(d){dashWeekOff+=d;document.getElementById('dashWeekLbl').textContent=weekLbl(dashWeekOff);renderDashboard();};
-window.changePtgWeek = function(d){ptgWeekOff+=d;document.getElementById('ptgWeekLbl').textContent=weekLbl(ptgWeekOff);renderPointages();};
+window.changePtgWeek = function(d){ptgWeekOff+=d;ptgDayFilter=null;document.getElementById('ptgWeekLbl').textContent=weekLbl(ptgWeekOff);renderPointages();};
+
+window.clearPtgDayFilter = function(){ ptgDayFilter=null; renderPointages(); };
+
+window.openTodayPointages = function(){
+  ptgWeekOff = 0;
+  ptgDayFilter = todayStr();
+  document.getElementById('ptgWeekLbl').textContent = weekLbl(ptgWeekOff);
+  showTab('pointages');
+};
 window.changeGalWeek = function(d){galWeekOff+=d;document.getElementById('galWeekLbl').textContent=weekLbl(galWeekOff);renderGalerie();};
 
 function getWorkerWeekDays(wId, off) {
@@ -788,7 +807,31 @@ function soldeDu(w) {
 }
 
 // ── DASHBOARD ──
+function renderTodayPointageCard() {
+  const today = todayStr();
+  const todaySlots = allSlots.filter(s=>s.date===today);
+  const expectedIds = new Set();
+  todaySlots.forEach(s=>(s.signups||[]).forEach(su=>expectedIds.add(su.workerId)));
+  const clockedIds = new Set(allEntries.filter(e=>e.date===today && e.type==='start').map(e=>e.workerId));
+  let clocked=0;
+  expectedIds.forEach(id=>{ if(clockedIds.has(id)) clocked++; });
+  const expected = expectedIds.size;
+
+  const badge = document.getElementById('todayPointageBadge');
+  const sub = document.getElementById('todayPointageSub');
+  if (!expected) {
+    badge.textContent = '—';
+    badge.className = 'rate-badge normal';
+    sub.textContent = 'Aucun créneau prévu aujourd\'hui';
+  } else {
+    badge.textContent = clocked+'/'+expected+' pointés';
+    badge.className = 'rate-badge '+(clocked>=expected?'normal':'senior');
+    sub.textContent = clocked>=expected ? 'Tout le monde a pointé ✓' : (expected-clocked)+' worker(s) pas encore pointé(s)';
+  }
+}
+
 function renderDashboard() {
+  renderTodayPointageCard();
   let totalBoss=0, totalPaid=0, rowsHtml='';
   allWorkers.forEach(w => {
     const days=getWorkerWeekDays(w.id,dashWeekOff);
@@ -886,8 +929,17 @@ window.deleteWorker = async function(wId) {
 
 // ── POINTAGES ──
 function renderPointages() {
-  const s=getWeekStart(ptgWeekOff), e=getWeekEnd(ptgWeekOff);
-  const week=allEntries.filter(en=>new Date(en.date)>=s&&new Date(en.date)<=e).sort((a,b)=>b.timestamp-a.timestamp);
+  const pillEl=document.getElementById('ptgDayFilterPill');
+  let week;
+  if (ptgDayFilter) {
+    week = allEntries.filter(en=>en.date===ptgDayFilter).sort((a,b)=>b.timestamp-a.timestamp);
+    pillEl.style.display='block';
+    pillEl.innerHTML = '<div class="filter-pill active" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;" onclick="clearPtgDayFilter()">📅 Filtré sur '+formatDate(ptgDayFilter)+' <span style="font-weight:700;">✕</span></div>';
+  } else {
+    const s=getWeekStart(ptgWeekOff), e=getWeekEnd(ptgWeekOff);
+    week = allEntries.filter(en=>new Date(en.date)>=s&&new Date(en.date)<=e).sort((a,b)=>b.timestamp-a.timestamp);
+    pillEl.style.display='none';
+  }
   const el=document.getElementById('ptgList');
   if(!week.length){el.innerHTML='<div style="color:var(--text-soft);font-size:13px;padding:12px 0;text-align:center;">Aucun pointage</div>';return;}
   el.innerHTML=week.map(en=>
@@ -1175,17 +1227,49 @@ window.addPayment = async function(wId){
 // ── PLANNING (créneaux) ──
 window.toggleNewSlot = function(){document.getElementById('newSlotPanel').classList.toggle('open');};
 
-// Géocodage gratuit via Nominatim (OpenStreetMap), sans clé API. Best-effort : si ça échoue,
-// le créneau se crée quand même mais sans marqueur sur la carte (jamais bloquant).
-const GEOCODE_REGION_HINT = 'NSW, Australia';
+// Géocodage gratuit, sans clé API. Best-effort : ne bloque jamais la création/modif d'un
+// créneau. Nominatim (OpenStreetMap) d'abord, Photon (photon.komoot.io, mêmes données OSM)
+// en repli si Nominatim échoue ou refuse — une seule requête par provider, pas de boucle.
+const GEOCODE_REGION_HINT = 'Sydney, NSW, Australia';
 
-async function geocodeQuery(q) {
+async function geocodeNominatim(q) {
   try {
     const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));
+    if (!res.ok) return null;
     const data = await res.json();
     if (data && data[0]) return {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
   } catch(e) {}
   return null;
+}
+
+async function geocodePhoton(q) {
+  try {
+    const res = await fetch('https://photon.komoot.io/api/?limit=1&q='+encodeURIComponent(q));
+    if (!res.ok) return null;
+    const data = await res.json();
+    const f = data && data.features && data.features[0];
+    const coords = f && f.geometry && f.geometry.coordinates;
+    if (coords) return {lat: coords[1], lng: coords[0]}; // GeoJSON = [lng, lat]
+  } catch(e) {}
+  return null;
+}
+
+async function geocodeQuery(q) {
+  const viaNominatim = await geocodeNominatim(q);
+  if (viaNominatim) return viaNominatim;
+  return await geocodePhoton(q);
+}
+
+// Cascade : adresse complète d'abord (sert au marqueur précis ET, si trouvée, au centre du
+// cercle de zone) ; si elle échoue, on retombe sur le suburb seul pour au moins garder le
+// cercle — c'est la seule chose visible avant confirmation de toute façon.
+async function geocodeSlot(address, suburb) {
+  const addrQ = address+', '+suburb+', '+GEOCODE_REGION_HINT;
+  const addrLoc = await geocodeQuery(addrQ);
+  if (addrLoc) return {addrLoc, suburbLoc: addrLoc};
+  const suburbQ = suburb.includes(',') ? suburb : suburb+', '+GEOCODE_REGION_HINT;
+  const suburbLoc = await geocodeQuery(suburbQ);
+  return {addrLoc: null, suburbLoc};
 }
 
 window.createSlot = async function(){
@@ -1195,7 +1279,7 @@ window.createSlot = async function(){
   const capacity=parseInt(document.getElementById('nsCapacity').value)||0;
   const notes=document.getElementById('nsNotes').value.trim();
   const workDescription=document.getElementById('nsWork').value.trim();
-  const hours=document.getElementById('nsHours').value.trim();
+  const hours=document.getElementById('nsHours').value.trim() || '7h00 - 15h30';
   if(!address){showToast('Entre une adresse');return;}
   if(!suburb){showToast('Entre le suburb');return;}
   if(!date){showToast('Choisis une date');return;}
@@ -1203,9 +1287,7 @@ window.createSlot = async function(){
 
   const statusEl = document.getElementById('nsGeoStatus');
   statusEl.textContent = '📍 Localisation automatique en cours…';
-  const suburbQ = suburb.includes(',') ? suburb : suburb+', '+GEOCODE_REGION_HINT;
-  const addrQ = address+', '+suburb+', '+GEOCODE_REGION_HINT;
-  const [suburbLoc, addrLoc] = await Promise.all([geocodeQuery(suburbQ), geocodeQuery(addrQ)]);
+  const {addrLoc, suburbLoc} = await geocodeSlot(address, suburb);
 
   const slotId='slot_'+Date.now();
   await setDoc(doc(db,'slots',slotId),{
@@ -1228,7 +1310,15 @@ window.createSlot = async function(){
   document.getElementById('nsCapacity').value='';
   document.getElementById('nsNotes').value='';
   window.toggleNewSlot();
-  showToast((suburbLoc && addrLoc) ? '✅ Créneau créé et localisé sur la carte !' : '✅ Créneau créé (localisation introuvable — pas de marqueur pour le moment)');
+
+  if (addrLoc) {
+    showToast('✅ Créneau créé et localisé sur la carte !');
+  } else if (suburbLoc) {
+    showToast('✅ Créneau créé (adresse introuvable — seul le cercle de zone du suburb sera affiché)');
+  } else {
+    showToast('✅ Créneau créé, mais sans localisation');
+    alert('⚠️ Impossible de localiser ce créneau : ni l\'adresse ni le suburb n\'ont été trouvés (Nominatim et Photon ont échoué).\n\nLe créneau a été créé mais n\'aura aucun marqueur/cercle sur la carte tant que tu ne corriges pas l\'adresse ou le suburb.');
+  }
 };
 
 window.saveSlotNotes = async function(slotId){
@@ -1381,13 +1471,16 @@ window.saveSlotEdit = async function(slotId) {
   const oldAddr = allSlotAddresses[slotId] || '';
   await setDoc(doc(db,'slots',slotId), {capacity:newCap}, {merge:true});
 
+  let geoFailed = false;
   if (newAddr !== oldAddr) {
-    const addrQ = newAddr+(slot.suburb?', '+slot.suburb:'')+', '+GEOCODE_REGION_HINT;
-    const addrLoc = await geocodeQuery(addrQ);
+    const {addrLoc, suburbLoc} = await geocodeSlot(newAddr, slot.suburb||'');
     await setDoc(doc(db,'slotAddresses',slotId), {address:newAddr, lat: addrLoc?addrLoc.lat:null, lng: addrLoc?addrLoc.lng:null}, {merge:true});
+    // Le cercle de zone suit la même cascade : coordonnées exactes si trouvées, sinon repli suburb.
+    await setDoc(doc(db,'slots',slotId), {suburbLat: suburbLoc?suburbLoc.lat:null, suburbLng: suburbLoc?suburbLoc.lng:null}, {merge:true});
+    geoFailed = !addrLoc && !suburbLoc;
   }
 
-  showToast('✅ Créneau mis à jour');
+  showToast(geoFailed ? '⚠️ Créneau mis à jour, mais localisation introuvable' : '✅ Créneau mis à jour');
 };
 
 window.addWorkerToSlot = async function(slotId) {
