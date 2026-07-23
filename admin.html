@@ -465,7 +465,6 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <input class="inp" id="nsAddr" placeholder="ex: 1080 Oxford Falls Rd">
       <label class="inp-lbl">Suburb (visible par les workers avant confirmation)</label>
       <input class="inp" id="nsSuburb" placeholder="ex: Mosman">
-      <div id="nsGeoStatus" style="font-size:11px;color:var(--text-soft);margin:-8px 0 10px;"></div>
 
       <label class="inp-lbl">Description du travail</label>
       <input class="inp" id="nsWork" placeholder="ex: Débroussaillage + tonte">
@@ -1272,6 +1271,30 @@ async function geocodeSlot(address, suburb) {
   return {addrLoc: null, suburbLoc};
 }
 
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve(null), ms))
+  ]);
+}
+
+// Le géocodage ne doit jamais bloquer la création/modif d'un créneau : il tourne en
+// arrière-plan, plafonné à 5s, et met juste à jour le créneau (déjà créé) quand il termine.
+async function runBackgroundGeocode(slotId, address, suburb) {
+  const result = await withTimeout(geocodeSlot(address, suburb), 5000);
+  const addrLoc = result ? result.addrLoc : null;
+  const suburbLoc = result ? result.suburbLoc : null;
+  await setDoc(doc(db,'slots',slotId), {
+    suburbLat: suburbLoc ? suburbLoc.lat : null,
+    suburbLng: suburbLoc ? suburbLoc.lng : null,
+    geoStatus: (addrLoc || suburbLoc) ? 'ok' : 'failed'
+  }, {merge:true});
+  await setDoc(doc(db,'slotAddresses',slotId), {
+    lat: addrLoc ? addrLoc.lat : null,
+    lng: addrLoc ? addrLoc.lng : null
+  }, {merge:true});
+}
+
 window.createSlot = async function(){
   const address=document.getElementById('nsAddr').value.trim();
   const suburb=document.getElementById('nsSuburb').value.trim();
@@ -1285,40 +1308,25 @@ window.createSlot = async function(){
   if(!date){showToast('Choisis une date');return;}
   if(capacity<1){showToast('Entre un nombre de places (min 1)');return;}
 
-  const statusEl = document.getElementById('nsGeoStatus');
-  statusEl.textContent = '📍 Localisation automatique en cours…';
-  const {addrLoc, suburbLoc} = await geocodeSlot(address, suburb);
-
   const slotId='slot_'+Date.now();
   await setDoc(doc(db,'slots',slotId),{
     date,suburb,capacity,notes,workDescription,hours,
-    suburbLat: suburbLoc ? suburbLoc.lat : null,
-    suburbLng: suburbLoc ? suburbLoc.lng : null,
+    suburbLat:null, suburbLng:null, geoStatus:'pending',
     signups:[],createdAt:Date.now()
   });
-  await setDoc(doc(db,'slotAddresses',slotId),{
-    address,
-    lat: addrLoc ? addrLoc.lat : null,
-    lng: addrLoc ? addrLoc.lng : null
-  });
+  await setDoc(doc(db,'slotAddresses',slotId),{address, lat:null, lng:null});
+
   document.getElementById('nsAddr').value='';
   document.getElementById('nsSuburb').value='';
-  statusEl.textContent='';
   document.getElementById('nsWork').value='';
   document.getElementById('nsHours').value='';
   document.getElementById('nsDate').value='';
   document.getElementById('nsCapacity').value='';
   document.getElementById('nsNotes').value='';
   window.toggleNewSlot();
+  showToast('✅ Créneau créé ! Localisation en arrière-plan…');
 
-  if (addrLoc) {
-    showToast('✅ Créneau créé et localisé sur la carte !');
-  } else if (suburbLoc) {
-    showToast('✅ Créneau créé (adresse introuvable — seul le cercle de zone du suburb sera affiché)');
-  } else {
-    showToast('✅ Créneau créé, mais sans localisation');
-    alert('⚠️ Impossible de localiser ce créneau : ni l\'adresse ni le suburb n\'ont été trouvés (Nominatim et Photon ont échoué).\n\nLe créneau a été créé mais n\'aura aucun marqueur/cercle sur la carte tant que tu ne corriges pas l\'adresse ou le suburb.');
-  }
+  runBackgroundGeocode(slotId, address, suburb); // pas de await : ne bloque jamais la création
 };
 
 window.saveSlotNotes = async function(slotId){
@@ -1427,6 +1435,7 @@ function renderPlanDayDetail(pending) {
         '<div class="rate-badge '+(full?'senior':'normal')+'">'+signups.length+'/'+s.capacity+'</div>' +
       '</div>' +
       ((s.hours||s.workDescription) ? '<div class="plan-detail-meta">'+(s.hours?'🕖 '+s.hours+' · ':'')+(s.workDescription||'')+'</div>' : '') +
+      (s.geoStatus==='failed' ? '<div style="font-size:11px;color:var(--gold);margin-top:2px;">⚠️ adresse non localisée — n\'apparaîtra pas sur la carte</div>' : '') +
       '<div style="margin:8px 0;">'+chipsHtml+'</div>' +
       '<div style="margin-top:10px;">' +
       '<label class="inp-lbl">Précisions pour cette journée</label>' +
@@ -1440,6 +1449,7 @@ function renderPlanDayDetail(pending) {
         '<label class="inp-lbl">Places</label>' +
         '<input class="inp" id="editCap-'+s.id+'" type="number" value="'+s.capacity+'">' +
         '<button class="btn btn-forest" onclick="saveSlotEdit(\''+s.id+'\')">💾 Enregistrer</button>' +
+        '<button class="btn btn-surface" style="margin-top:6px;" onclick="retryGeocode(\''+s.id+'\')">🔄 Relancer la localisation</button>' +
         '<label class="inp-lbl" style="margin-top:12px;">Ajouter un worker sur ce créneau</label>' +
         '<div style="display:flex;gap:8px;">' +
           '<select class="inp" id="editAddWorker-'+s.id+'" style="flex:1;margin-bottom:0;-webkit-appearance:none;">'+addWorkerOptions+'</select>' +
@@ -1471,16 +1481,26 @@ window.saveSlotEdit = async function(slotId) {
   const oldAddr = allSlotAddresses[slotId] || '';
   await setDoc(doc(db,'slots',slotId), {capacity:newCap}, {merge:true});
 
-  let geoFailed = false;
   if (newAddr !== oldAddr) {
-    const {addrLoc, suburbLoc} = await geocodeSlot(newAddr, slot.suburb||'');
-    await setDoc(doc(db,'slotAddresses',slotId), {address:newAddr, lat: addrLoc?addrLoc.lat:null, lng: addrLoc?addrLoc.lng:null}, {merge:true});
-    // Le cercle de zone suit la même cascade : coordonnées exactes si trouvées, sinon repli suburb.
-    await setDoc(doc(db,'slots',slotId), {suburbLat: suburbLoc?suburbLoc.lat:null, suburbLng: suburbLoc?suburbLoc.lng:null}, {merge:true});
-    geoFailed = !addrLoc && !suburbLoc;
+    await setDoc(doc(db,'slotAddresses',slotId), {address:newAddr}, {merge:true});
+    await setDoc(doc(db,'slots',slotId), {geoStatus:'pending'}, {merge:true});
+    showToast('✅ Créneau mis à jour, nouvelle localisation en arrière-plan…');
+    runBackgroundGeocode(slotId, newAddr, slot.suburb||''); // pas de await : ne bloque jamais la sauvegarde
+  } else {
+    showToast('✅ Créneau mis à jour');
   }
+};
 
-  showToast(geoFailed ? '⚠️ Créneau mis à jour, mais localisation introuvable' : '✅ Créneau mis à jour');
+// Permet de relancer le géocodage sans toucher à l'adresse ni recréer le créneau
+// (utile après un échec temporaire ou un timeout).
+window.retryGeocode = async function(slotId) {
+  const slot = allSlots.find(s=>s.id===slotId);
+  if (!slot) return;
+  const address = allSlotAddresses[slotId] || '';
+  if (!address) { showToast('Adresse manquante'); return; }
+  await setDoc(doc(db,'slots',slotId), {geoStatus:'pending'}, {merge:true});
+  showToast('📍 Nouvelle tentative de localisation…');
+  runBackgroundGeocode(slotId, address, slot.suburb||'');
 };
 
 window.addWorkerToSlot = async function(slotId) {
