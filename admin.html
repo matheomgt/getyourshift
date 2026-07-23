@@ -429,20 +429,10 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
     <div class="expand-panel" id="newSlotPanel">
       <div class="card-title">Nouveau créneau</div>
       <label class="inp-lbl">Adresse du chantier</label>
-      <input class="inp" id="nsAddr" placeholder="ex: 1080 Oxford Falls Rd" onblur="autoGeocodeAddress()">
-      <div class="inp-row">
-        <div><label class="inp-lbl">Latitude exacte</label><input class="inp" id="nsAddrLat" type="number" step="any" placeholder="auto"></div>
-        <div><label class="inp-lbl">Longitude exacte</label><input class="inp" id="nsAddrLng" type="number" step="any" placeholder="auto"></div>
-      </div>
-      <div id="nsAddrGeoStatus" style="font-size:11px;color:var(--text-soft);margin:-8px 0 10px;"></div>
-
+      <input class="inp" id="nsAddr" placeholder="ex: 1080 Oxford Falls Rd">
       <label class="inp-lbl">Suburb (visible par les workers avant confirmation)</label>
-      <input class="inp" id="nsSuburb" placeholder="ex: Mosman" onblur="autoGeocodeSuburb()">
-      <div class="inp-row">
-        <div><label class="inp-lbl">Latitude suburb (approx.)</label><input class="inp" id="nsSuburbLat" type="number" step="any" placeholder="auto"></div>
-        <div><label class="inp-lbl">Longitude suburb (approx.)</label><input class="inp" id="nsSuburbLng" type="number" step="any" placeholder="auto"></div>
-      </div>
-      <div id="nsSuburbGeoStatus" style="font-size:11px;color:var(--text-soft);margin:-8px 0 10px;"></div>
+      <input class="inp" id="nsSuburb" placeholder="ex: Mosman">
+      <div id="nsGeoStatus" style="font-size:11px;color:var(--text-soft);margin:-8px 0 10px;"></div>
 
       <label class="inp-lbl">Description du travail</label>
       <input class="inp" id="nsWork" placeholder="ex: Débroussaillage + tonte">
@@ -1147,7 +1137,7 @@ window.addPayment = async function(wId){
 window.toggleNewSlot = function(){document.getElementById('newSlotPanel').classList.toggle('open');};
 
 // Géocodage gratuit via Nominatim (OpenStreetMap), sans clé API. Best-effort : si ça échoue,
-// le créneau se crée quand même mais sans marqueur sur la carte (les champs restent modifiables).
+// le créneau se crée quand même mais sans marqueur sur la carte (jamais bloquant).
 const GEOCODE_REGION_HINT = 'NSW, Australia';
 
 async function geocodeQuery(q) {
@@ -1159,39 +1149,6 @@ async function geocodeQuery(q) {
   return null;
 }
 
-window.autoGeocodeSuburb = async function() {
-  const suburb = document.getElementById('nsSuburb').value.trim();
-  if (!suburb) return;
-  const statusEl = document.getElementById('nsSuburbGeoStatus');
-  statusEl.textContent = '📍 Localisation en cours…';
-  const q = suburb.includes(',') ? suburb : suburb+', '+GEOCODE_REGION_HINT;
-  const loc = await geocodeQuery(q);
-  if (loc) {
-    document.getElementById('nsSuburbLat').value = loc.lat;
-    document.getElementById('nsSuburbLng').value = loc.lng;
-    statusEl.textContent = '📍 Localisé automatiquement — corrige si besoin';
-  } else {
-    statusEl.textContent = '⚠️ Non trouvé — entre les coordonnées manuellement pour afficher un cercle sur la carte';
-  }
-};
-
-window.autoGeocodeAddress = async function() {
-  const addr = document.getElementById('nsAddr').value.trim();
-  const suburb = document.getElementById('nsSuburb').value.trim();
-  if (!addr) return;
-  const statusEl = document.getElementById('nsAddrGeoStatus');
-  statusEl.textContent = '📍 Localisation en cours…';
-  const q = addr+(suburb?', '+suburb:'')+', '+GEOCODE_REGION_HINT;
-  const loc = await geocodeQuery(q);
-  if (loc) {
-    document.getElementById('nsAddrLat').value = loc.lat;
-    document.getElementById('nsAddrLng').value = loc.lng;
-    statusEl.textContent = '📍 Localisé automatiquement — corrige si besoin';
-  } else {
-    statusEl.textContent = '⚠️ Non trouvé — entre les coordonnées manuellement pour afficher un marqueur précis sur la carte';
-  }
-};
-
 window.createSlot = async function(){
   const address=document.getElementById('nsAddr').value.trim();
   const suburb=document.getElementById('nsSuburb').value.trim();
@@ -1200,41 +1157,39 @@ window.createSlot = async function(){
   const notes=document.getElementById('nsNotes').value.trim();
   const workDescription=document.getElementById('nsWork').value.trim();
   const hours=document.getElementById('nsHours').value.trim();
-  const suburbLat=parseFloat(document.getElementById('nsSuburbLat').value);
-  const suburbLng=parseFloat(document.getElementById('nsSuburbLng').value);
-  const addrLat=parseFloat(document.getElementById('nsAddrLat').value);
-  const addrLng=parseFloat(document.getElementById('nsAddrLng').value);
   if(!address){showToast('Entre une adresse');return;}
   if(!suburb){showToast('Entre le suburb');return;}
   if(!date){showToast('Choisis une date');return;}
   if(capacity<1){showToast('Entre un nombre de places (min 1)');return;}
+
+  const statusEl = document.getElementById('nsGeoStatus');
+  statusEl.textContent = '📍 Localisation automatique en cours…';
+  const suburbQ = suburb.includes(',') ? suburb : suburb+', '+GEOCODE_REGION_HINT;
+  const addrQ = address+', '+suburb+', '+GEOCODE_REGION_HINT;
+  const [suburbLoc, addrLoc] = await Promise.all([geocodeQuery(suburbQ), geocodeQuery(addrQ)]);
+
   const slotId='slot_'+Date.now();
   await setDoc(doc(db,'slots',slotId),{
     date,suburb,capacity,notes,workDescription,hours,
-    suburbLat: isNaN(suburbLat)?null:suburbLat,
-    suburbLng: isNaN(suburbLng)?null:suburbLng,
+    suburbLat: suburbLoc ? suburbLoc.lat : null,
+    suburbLng: suburbLoc ? suburbLoc.lng : null,
     signups:[],createdAt:Date.now()
   });
   await setDoc(doc(db,'slotAddresses',slotId),{
     address,
-    lat: isNaN(addrLat)?null:addrLat,
-    lng: isNaN(addrLng)?null:addrLng
+    lat: addrLoc ? addrLoc.lat : null,
+    lng: addrLoc ? addrLoc.lng : null
   });
   document.getElementById('nsAddr').value='';
-  document.getElementById('nsAddrLat').value='';
-  document.getElementById('nsAddrLng').value='';
-  document.getElementById('nsAddrGeoStatus').textContent='';
   document.getElementById('nsSuburb').value='';
-  document.getElementById('nsSuburbLat').value='';
-  document.getElementById('nsSuburbLng').value='';
-  document.getElementById('nsSuburbGeoStatus').textContent='';
+  statusEl.textContent='';
   document.getElementById('nsWork').value='';
   document.getElementById('nsHours').value='';
   document.getElementById('nsDate').value='';
   document.getElementById('nsCapacity').value='';
   document.getElementById('nsNotes').value='';
   window.toggleNewSlot();
-  showToast('✅ Créneau créé !');
+  showToast((suburbLoc && addrLoc) ? '✅ Créneau créé et localisé sur la carte !' : '✅ Créneau créé (localisation introuvable — pas de marqueur pour le moment)');
 };
 
 window.saveSlotNotes = async function(slotId){
