@@ -258,6 +258,14 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 .modal-handle{width:40px;height:4px;background:var(--cream2);border-radius:99px;margin:0 auto 20px;}
 .modal-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text-dark);margin-bottom:4px;}
 .modal-sub{font-size:12px;color:var(--text-soft);margin-bottom:18px;}
+.guide-sheet{max-height:82dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.guide-section{margin-bottom:18px;}
+.guide-section:last-child{margin-bottom:4px;}
+.guide-section-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--forest);margin-bottom:6px;display:flex;align-items:center;gap:7px;}
+.guide-section-body{font-size:13px;color:var(--text-mid);line-height:1.6;}
+.guide-section-body ul{padding-left:18px;margin-top:4px;}
+.guide-section-body li{margin-bottom:5px;}
+.guide-note{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--text-dark);margin-top:8px;line-height:1.5;}
 .photo-zone{background:var(--white);border:2px dashed var(--border);border-radius:14px;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:12px;overflow:hidden;}
 .photo-zone.has{border-style:solid;border-color:var(--sage);}
 .pz-icon{font-size:30px;}
@@ -514,6 +522,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
           <div class="prof-stat"><div class="prof-stat-val" id="profChantiers">0</div><div class="prof-stat-lbl">Chantiers</div></div>
         </div>
       </div>
+      <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:14px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--forest);cursor:pointer;margin-bottom:10px;box-shadow:var(--shadow);" onclick="openGuide()">❓ Guide — Première utilisation</button>
       <div class="card" style="margin-bottom:10px;">
         <div class="cal-header">
           <button class="cal-nav-btn" onclick="calMonth(-1)">‹</button>
@@ -603,7 +612,64 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
     </div>
 
     <button class="confirm-btn" id="slotDetailJoinBtn" style="display:none;">S'inscrire</button>
-    <button class="confirm-btn" onclick="document.getElementById('slotDetailModal').classList.remove('open')">Fermer</button>
+    <button class="confirm-btn" onclick="closeSlotDetail()">Fermer</button>
+  </div>
+</div>
+
+<!-- MODAL GUIDE (première utilisation) -->
+<div class="modal-overlay" id="guideModal">
+  <div class="modal-sheet guide-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Guide — Première utilisation</div>
+    <div class="modal-sub">À garder sous la main pour toute question</div>
+
+    <div class="guide-section">
+      <div class="guide-section-title">🔐 Se connecter et créer ton PIN</div>
+      <div class="guide-section-body">
+        <ul>
+          <li>Au premier lancement, choisis ton prénom dans la liste.</li>
+          <li>Première connexion : crée un code à 4 chiffres, tape-le une seconde fois pour le confirmer. C'est ton PIN personnel, garde-le pour toi.</li>
+          <li>Les fois suivantes : choisis ton prénom puis entre ton PIN pour te connecter.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-title">📸 Pointer arrivée et départ</div>
+      <div class="guide-section-body">
+        <ul>
+          <li>Dans l'onglet "Pointage" : bouton <strong>Arrivée</strong> le matin, bouton <strong>Départ</strong> en fin de journée.</li>
+          <li>Une photo est obligatoire à chaque pointage.</li>
+          <li>Autorise ta localisation (GPS) — elle est enregistrée avec le pointage.</li>
+          <li>Sans photo et sans GPS, le pointage ne peut pas être validé.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-title">📅 S'inscrire sur un créneau</div>
+      <div class="guide-section-body">
+        <ul>
+          <li>Onglet "Dispos" : consulte la carte ou la liste des créneaux disponibles.</li>
+          <li>Tant que tu n'es pas inscrit, tu ne vois que le quartier (suburb) — pas l'adresse exacte.</li>
+          <li>Appuie sur "S'inscrire" : l'adresse complète et le lien Google Maps apparaissent dans "Mes inscriptions" une fois ta place confirmée.</li>
+          <li>Un créneau n'est plus réservable à partir de 7h du matin le jour même.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-title">❌ Règles de désinscription</div>
+      <div class="guide-section-body">
+        <ul>
+          <li>Avant 20h la veille du créneau : tu peux te désinscrire librement, en un tap.</li>
+          <li>Après 20h la veille (moins de 24h avant) : il faut écrire une raison, et ton responsable doit valider la demande avant que la désinscription soit effective.</li>
+        </ul>
+        <div class="guide-note">💡 1 joker par mois pour une désinscription tardive sans conséquence — au-delà, chaque cas est examiné avec ton responsable.</div>
+      </div>
+    </div>
+
+    <button class="confirm-btn" onclick="closeGuide()">Fermer</button>
   </div>
 </div>
 
@@ -615,7 +681,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, setDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD7TxMgSh0hkuz0jgAFCh3I7SvQkHzorgc",
@@ -646,6 +712,8 @@ let myCancelRequests = [];
 let unsubSlots = null, unsubMyCancelReqs = null;
 let cancelingSlotId = null;
 let addrCache = {}; // fetched on-demand, only for slots the worker is confirmed on
+let addrUnsubs = {}; // slotId -> live listener, so admin edits reach an already-open session
+let openSlotDetailId = null; // slotId currently shown in the detail modal, for live refresh
 
 // ── UTILS ──
 function todayStr() {
@@ -1022,14 +1090,37 @@ window.viewPhoto = function(entryId) {
 // non confirmé : seuls le suburb et son centre approximatif (déjà présents dans le doc
 // "slots") sont diffusés à tous. Les infos exactes vivent dans "slotAddresses" et ne
 // sont récupérées à la demande que pour les créneaux où le worker est inscrit (confirmé).
-function getSlotAddressInfo(slotId) {
-  if (addrCache[slotId] !== undefined) return addrCache[slotId];
-  addrCache[slotId] = null; // avoid duplicate fetches while loading
-  getDoc(doc(db,'slotAddresses',slotId)).then(snap => {
-    addrCache[slotId] = snap.exists() ? snap.data() : {address:'', lat:null, lng:null};
+// Écoute en direct (au lieu d'une lecture ponctuelle) pour qu'une modification de
+// l'admin (adresse, etc.) se répercute immédiatement dans une session déjà ouverte.
+function watchSlotAddress(slotId) {
+  if (addrUnsubs[slotId]) return;
+  addrUnsubs[slotId] = onSnapshot(doc(db,'slotAddresses',slotId), snap => {
+    addrCache[slotId] = (snap.exists() && snap.data().address) ? snap.data() : {address:null, lat:null, lng:null};
     renderDispos();
+    if (openSlotDetailId === slotId) refreshSlotDetailAddr(slotId);
+  }, () => {
+    addrCache[slotId] = {address:null, lat:null, lng:null}; // repli si la requête échoue (réseau, permissions…)
+    renderDispos();
+    if (openSlotDetailId === slotId) refreshSlotDetailAddr(slotId);
   });
-  return null;
+}
+
+function getSlotAddressInfo(slotId) {
+  watchSlotAddress(slotId);
+  return addrCache[slotId] !== undefined ? addrCache[slotId] : null;
+}
+
+function refreshSlotDetailAddr(slotId) {
+  const info = addrCache[slotId];
+  if (!info) return;
+  if (info.address) {
+    document.getElementById('slotDetailAddr').value = info.address;
+    document.getElementById('slotDetailMaps').style.display = 'block';
+    document.getElementById('slotDetailMaps').href = mapsLink(info.address);
+  } else {
+    document.getElementById('slotDetailAddr').value = '⚠️ Adresse indisponible, contacte l\'administrateur';
+    document.getElementById('slotDetailMaps').style.display = 'none';
+  }
 }
 
 // Une dispo n'est ouverte à l'inscription que jusqu'à 7h00 le matin du jour concerné.
@@ -1126,7 +1217,9 @@ function renderDispos() {
     const info = getSlotAddressInfo(s.id);
     const addrHtml = info === null
       ? '<span style="color:var(--text-soft);">Chargement de l\'adresse…</span>'
-      : '<a href="'+mapsLink(info.address)+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--sage);text-decoration:underline;">📍 '+info.address+'</a>';
+      : info.address
+        ? '<a href="'+mapsLink(info.address)+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--sage);text-decoration:underline;">📍 '+info.address+'</a>'
+        : '<span style="color:var(--danger);">⚠️ Adresse indisponible, contacte l\'administrateur</span>';
     return '<div class="recap-day" style="cursor:pointer;" onclick="openSlotDetails(\''+s.id+'\')">' +
       '<div class="recap-day-date">'+formatDate(s.date)+'</div>' +
       '<div class="recap-day-addr">'+addrHtml+(s.notes?' <span style="color:var(--gold);">· 📌 précisions</span>':'')+'</div>' +
@@ -1135,7 +1228,7 @@ function renderDispos() {
   }).join('') : '<div style="color:var(--text-soft);font-size:13px;text-align:center;padding:12px;">Aucune inscription</div>';
 }
 
-window.openSlotDetails = async function(slotId) {
+window.openSlotDetails = function(slotId) {
   const slot = allSlots.find(s=>s.id===slotId);
   if (!slot) return;
   const confirmed = (slot.signups||[]).some(su=>su.workerId===currentWorker.id);
@@ -1168,18 +1261,17 @@ window.openSlotDetails = async function(slotId) {
   document.getElementById('slotDetailModal').classList.add('open');
 
   if (confirmed) {
+    openSlotDetailId = slotId;
     addrWrap.style.display = 'block';
     suburbWrap.style.display = 'none';
     placesWrap.style.display = 'none';
     joinBtn.style.display = 'none';
     document.getElementById('slotDetailAddr').value = 'Chargement…';
-    if (addrCache[slotId] === undefined || addrCache[slotId] === null) {
-      const snap = await getDoc(doc(db,'slotAddresses',slotId));
-      addrCache[slotId] = snap.exists() ? snap.data() : {address:'', lat:null, lng:null};
-    }
-    document.getElementById('slotDetailAddr').value = addrCache[slotId].address;
-    document.getElementById('slotDetailMaps').href = mapsLink(addrCache[slotId].address);
+    document.getElementById('slotDetailMaps').style.display = 'none';
+    const info = getSlotAddressInfo(slotId); // démarre/réutilise l'écoute en direct
+    if (info) refreshSlotDetailAddr(slotId);
   } else {
+    openSlotDetailId = null;
     addrWrap.style.display = 'none';
     suburbWrap.style.display = 'block';
     document.getElementById('slotDetailSuburb').textContent = '📍 '+(slot.suburb||'');
@@ -1188,10 +1280,15 @@ window.openSlotDetails = async function(slotId) {
     document.getElementById('slotDetailPlaces').textContent = left+' place(s) restante(s)';
     joinBtn.style.display = (left>0 && isSlotOpenForSignup(slot)) ? 'block' : 'none';
     joinBtn.onclick = function() {
-      document.getElementById('slotDetailModal').classList.remove('open');
+      closeSlotDetail();
       joinSlot(slotId);
     };
   }
+};
+
+window.closeSlotDetail = function() {
+  document.getElementById('slotDetailModal').classList.remove('open');
+  openSlotDetailId = null;
 };
 
 window.copySlotAddress = function() {
@@ -1361,7 +1458,11 @@ window.openModal = function(type) {
 
 document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
 document.getElementById('cancelModal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
-document.getElementById('slotDetailModal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+document.getElementById('slotDetailModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeSlotDetail(); });
+document.getElementById('guideModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeGuide(); });
+
+window.openGuide = function() { document.getElementById('guideModal').classList.add('open'); };
+window.closeGuide = function() { document.getElementById('guideModal').classList.remove('open'); };
 
 window.handlePhoto = function(e) {
   const file = e.target.files[0]; if(!file) return;

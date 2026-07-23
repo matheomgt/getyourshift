@@ -173,6 +173,29 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 .filter-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--cream2);color:var(--text-mid);font-size:11px;cursor:pointer;}
 .filter-pill.active{background:var(--forest);color:var(--cream);border-color:var(--forest);}
 
+/* PLANNING (vue jour / semaine) */
+.plan-day-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer;}
+.plan-day-card.today{box-shadow:0 0 0 1.5px var(--sage),var(--shadow);}
+.plan-day-head{display:flex;justify-content:space-between;align-items:baseline;}
+.plan-day-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--text-dark);}
+.plan-day-today-tag{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--sage);font-weight:600;margin-left:6px;}
+.plan-day-count{font-size:11px;color:var(--text-soft);}
+.plan-day-empty{font-size:12px;color:var(--text-soft);padding-top:6px;}
+.plan-slot-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0 0;margin-top:8px;border-top:1px solid var(--cream2);}
+.plan-slot-loc{font-size:13px;color:var(--text-mid);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.plan-slot-badge{flex-shrink:0;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.plan-slot-badge.open{background:rgba(45,74,45,0.08);color:var(--forest);border:1px solid var(--border);}
+.plan-slot-badge.full{background:rgba(201,168,76,0.14);color:var(--gold);border:1px solid rgba(201,168,76,0.3);}
+
+.plan-detail-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;box-shadow:var(--shadow);}
+.plan-detail-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.plan-detail-addr{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:var(--text-dark);}
+.plan-detail-suburb{font-size:12px;color:var(--sage);font-weight:500;margin-top:1px;}
+.plan-detail-meta{font-size:12px;color:var(--text-mid);margin:8px 0;}
+.plan-worker-chip{display:inline-flex;align-items:center;gap:5px;background:var(--cream2);border-radius:20px;padding:5px 11px;font-size:12px;color:var(--text-dark);margin:0 6px 6px 0;}
+.plan-worker-chip.pending{background:rgba(201,168,76,0.14);color:var(--gold);}
+.plan-empty-day{text-align:center;padding:32px 16px;color:var(--text-soft);font-size:13px;}
+
 /* PAY CARDS */
 .pay-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;box-shadow:var(--shadow);}
 
@@ -453,10 +476,25 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <div class="card-title">⏳ Annulations en attente</div>
       <div id="cancelReqList"></div>
     </div>
-    <div class="card">
-      <div class="card-title">Tous les créneaux</div>
-      <div id="slotsList"></div>
+
+    <div class="filter-pills">
+      <div class="filter-pill active" id="planPillWeek" onclick="setPlanView('week')">📆 Vue semaine</div>
+      <div class="filter-pill" id="planPillDay" onclick="setPlanView('day')">📋 Vue jour</div>
     </div>
+
+    <div class="week-nav" id="planWeekNav">
+      <button class="wnav-btn" onclick="changePlanWeek(-1)">‹</button>
+      <div class="wnav-lbl" id="planWeekLbl"></div>
+      <button class="wnav-btn" onclick="changePlanWeek(1)">›</button>
+    </div>
+    <div class="week-nav" id="planDayNav" style="display:none;">
+      <button class="wnav-btn" onclick="changePlanDay(-1)">‹</button>
+      <div class="wnav-lbl" id="planDayLbl"></div>
+      <button class="wnav-btn" onclick="changePlanDay(1)">›</button>
+    </div>
+
+    <div id="planWeekGrid"></div>
+    <div id="planDayDetail" style="display:none;"></div>
   </div>
 
   <!-- SETTINGS -->
@@ -557,6 +595,7 @@ const ADMIN_PIN_KEY = 'gys_admin_pin';
 let allWorkers = [];
 let allEntries = [];
 let dashWeekOff=0, ptgWeekOff=0, galWeekOff=0;
+let planWeekOff=0, planViewMode='week', planSelectedDate=todayStr();
 let galFilter = 'all';
 let currentFicheId = null;
 let ficheCalOff = 0;
@@ -1224,32 +1263,183 @@ function renderPlanning(){
     reqCard.style.display='none';
   }
 
-  // Liste des créneaux
-  const el=document.getElementById('slotsList');
-  if(!allSlots.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun créneau</div>';return;}
-  el.innerHTML=allSlots.map(s=>{
+  // Vue jour / semaine, navigation
+  document.getElementById('planWeekLbl').textContent = weekLbl(planWeekOff);
+  document.getElementById('planDayLbl').textContent = new Date(planSelectedDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+
+  if (planViewMode==='week') renderPlanWeekGrid(pending);
+  else renderPlanDayDetail(pending);
+}
+
+function renderPlanWeekGrid(pending) {
+  const el = document.getElementById('planWeekGrid');
+  const start = getWeekStart(planWeekOff);
+  const todayS = todayStr();
+  const dayNames = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+
+  const days = [];
+  for (let i=0;i<7;i++) { const d=new Date(start); d.setDate(start.getDate()+i); days.push(d); }
+
+  el.innerHTML = days.map((d,i) => {
+    const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const slotsThatDay = allSlots.filter(s=>s.date===ds);
+    const isToday = ds===todayS;
+    const dateLbl = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+
+    const body = slotsThatDay.length
+      ? slotsThatDay.map(s=>{
+          const signups=s.signups||[];
+          const full = signups.length>=s.capacity;
+          const loc = allSlotAddresses[s.id] || s.suburb || '';
+          return '<div class="plan-slot-row">' +
+            '<div class="plan-slot-loc">📍 '+loc+'</div>' +
+            '<div class="plan-slot-badge '+(full?'full':'open')+'">'+signups.length+'/'+s.capacity+'</div>' +
+            '</div>';
+        }).join('')
+      : '<div class="plan-day-empty">Aucun créneau</div>';
+
+    return '<div class="plan-day-card'+(isToday?' today':'')+'" onclick="openPlanDay(\''+ds+'\')">' +
+      '<div class="plan-day-head">' +
+        '<div class="plan-day-name">'+dayNames[i]+' '+dateLbl+(isToday?'<span class="plan-day-today-tag">Aujourd\'hui</span>':'')+'</div>' +
+        (slotsThatDay.length ? '<div class="plan-day-count">'+slotsThatDay.length+' créneau'+(slotsThatDay.length>1?'x':'')+'</div>' : '') +
+      '</div>' +
+      body +
+      '</div>';
+  }).join('');
+}
+
+function renderPlanDayDetail(pending) {
+  const el = document.getElementById('planDayDetail');
+  const slotsThatDay = allSlots.filter(s=>s.date===planSelectedDate);
+
+  if (!slotsThatDay.length) {
+    el.innerHTML = '<div class="plan-empty-day">Aucun créneau ce jour-là</div>';
+    return;
+  }
+
+  el.innerHTML = slotsThatDay.map(s=>{
     const signups=s.signups||[];
     const pendingForSlot=pending.filter(r=>r.slotId===s.id).map(r=>r.workerId);
-    const namesHtml=signups.length ? signups.map(su=>'<div style="font-size:12px;color:var(--text-mid);padding:3px 0;">👷 '+su.workerName+(pendingForSlot.includes(su.workerId)?' <span style="color:var(--gold);">⏳ annulation en attente</span>':'')+'</div>').join('') : '<div style="font-size:12px;color:var(--text-soft);padding:3px 0;">Personne inscrit</div>';
+    const chipsHtml = signups.length
+      ? signups.map(su=>'<span class="plan-worker-chip'+(pendingForSlot.includes(su.workerId)?' pending':'')+'">👷 '+su.workerName+(pendingForSlot.includes(su.workerId)?' ⏳':'')+
+          ' <span onclick="removeWorkerFromSlot(\''+s.id+'\',\''+su.workerId+'\')" title="Retirer du créneau" style="cursor:pointer;font-weight:700;margin-left:4px;color:var(--danger);">✕</span></span>').join('')
+      : '<div style="font-size:12px;color:var(--text-soft);">Personne inscrit</div>';
     const fullAddr = allSlotAddresses[s.id] || s.suburb || '';
-    const workLine = (s.workDescription||s.hours) ? '<div style="font-size:12px;color:var(--text-mid);margin:4px 0;">'+(s.hours?'🕖 '+s.hours+' · ':'')+(s.workDescription||'')+'</div>' : '';
-    return '<div class="worker-card">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
-      '<div><div class="worker-name">'+formatDate(s.date)+'</div>' +
-      '<a href="'+mapsLink(fullAddr)+'" target="_blank" style="font-size:12px;color:var(--sage);text-decoration:underline;">📍 '+fullAddr+' <span style="color:var(--text-soft);">('+s.suburb+')</span></a></div>' +
-      '<div class="rate-badge normal">'+signups.length+'/'+s.capacity+'</div>' +
+    const full = signups.length>=s.capacity;
+    const availableWorkers = allWorkers.filter(w=>!signups.some(su=>su.workerId===w.id));
+    const addWorkerOptions = availableWorkers.length
+      ? '<option value="">Choisir un worker…</option>'+availableWorkers.map(w=>'<option value="'+w.id+'">'+w.name+'</option>').join('')
+      : '<option value="">Tous les workers sont déjà inscrits</option>';
+    return '<div class="plan-detail-card">' +
+      '<div class="plan-detail-top">' +
+        '<div><a href="'+mapsLink(fullAddr)+'" target="_blank" class="plan-detail-addr" style="text-decoration:none;color:var(--text-dark);">📍 '+fullAddr+'</a>' +
+        '<div class="plan-detail-suburb">'+(s.suburb||'')+'</div></div>' +
+        '<div class="rate-badge '+(full?'senior':'normal')+'">'+signups.length+'/'+s.capacity+'</div>' +
       '</div>' +
-      workLine +
-      namesHtml +
+      ((s.hours||s.workDescription) ? '<div class="plan-detail-meta">'+(s.hours?'🕖 '+s.hours+' · ':'')+(s.workDescription||'')+'</div>' : '') +
+      '<div style="margin:8px 0;">'+chipsHtml+'</div>' +
       '<div style="margin-top:10px;">' +
       '<label class="inp-lbl">Précisions pour cette journée</label>' +
       '<input class="inp" id="slotNotes-'+s.id+'" value="'+(s.notes||'').replace(/"/g,'&quot;')+'" placeholder="ex: rdv avec le client à 8h, prévoir bottes…">' +
       '<button class="btn btn-surface" style="margin-top:6px;" onclick="saveSlotNotes(\''+s.id+'\')">💾 Enregistrer les précisions</button>' +
       '</div>' +
+      '<button class="btn btn-surface" style="margin-top:10px;" onclick="toggleSlotEdit(\''+s.id+'\')">✏️ Modifier le créneau</button>' +
+      '<div class="expand-panel" id="slotEdit-'+s.id+'">' +
+        '<label class="inp-lbl">Adresse du chantier</label>' +
+        '<input class="inp" id="editAddr-'+s.id+'" value="'+fullAddr.replace(/"/g,'&quot;')+'">' +
+        '<label class="inp-lbl">Places</label>' +
+        '<input class="inp" id="editCap-'+s.id+'" type="number" value="'+s.capacity+'">' +
+        '<button class="btn btn-forest" onclick="saveSlotEdit(\''+s.id+'\')">💾 Enregistrer</button>' +
+        '<label class="inp-lbl" style="margin-top:12px;">Ajouter un worker sur ce créneau</label>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<select class="inp" id="editAddWorker-'+s.id+'" style="flex:1;margin-bottom:0;-webkit-appearance:none;">'+addWorkerOptions+'</select>' +
+          '<button class="btn btn-surface" style="width:auto;padding:0 16px;flex-shrink:0;" onclick="addWorkerToSlot(\''+s.id+'\')">+ Ajouter</button>' +
+        '</div>' +
+      '</div>' +
       '<button class="btn btn-danger" style="margin-top:10px;" onclick="deleteSlot(\''+s.id+'\')">🗑 Supprimer le créneau</button>' +
       '</div>';
   }).join('');
 }
+
+window.toggleSlotEdit = function(slotId) {
+  document.getElementById('slotEdit-'+slotId).classList.toggle('open');
+};
+
+window.saveSlotEdit = async function(slotId) {
+  const slot = allSlots.find(s=>s.id===slotId);
+  if (!slot) return;
+  const newAddr = document.getElementById('editAddr-'+slotId).value.trim();
+  const newCap = parseInt(document.getElementById('editCap-'+slotId).value)||0;
+  if (!newAddr) { showToast('Entre une adresse'); return; }
+  if (newCap<1) { showToast('Entre un nombre de places (min 1)'); return; }
+
+  const signupsCount = (slot.signups||[]).length;
+  if (newCap < signupsCount) {
+    if (!confirm('Ce créneau a '+signupsCount+' worker(s) inscrit(s), tu réduis à '+newCap+' place(s). Confirmer quand même ?')) return;
+  }
+
+  const oldAddr = allSlotAddresses[slotId] || '';
+  await setDoc(doc(db,'slots',slotId), {capacity:newCap}, {merge:true});
+
+  if (newAddr !== oldAddr) {
+    const addrQ = newAddr+(slot.suburb?', '+slot.suburb:'')+', '+GEOCODE_REGION_HINT;
+    const addrLoc = await geocodeQuery(addrQ);
+    await setDoc(doc(db,'slotAddresses',slotId), {address:newAddr, lat: addrLoc?addrLoc.lat:null, lng: addrLoc?addrLoc.lng:null}, {merge:true});
+  }
+
+  showToast('✅ Créneau mis à jour');
+};
+
+window.addWorkerToSlot = async function(slotId) {
+  const sel = document.getElementById('editAddWorker-'+slotId);
+  const wId = sel.value;
+  if (!wId) { showToast('Choisis un worker'); return; }
+  const slot = allSlots.find(s=>s.id===slotId);
+  if (!slot) return;
+  const w = allWorkers.find(x=>x.id===wId);
+  if (!w) return;
+  const signups = slot.signups||[];
+  if (signups.some(su=>su.workerId===wId)) { showToast('Déjà inscrit sur ce créneau'); return; }
+  await setDoc(doc(db,'slots',slotId), {signups:[...signups,{workerId:wId, workerName:w.name, signedUpAt:Date.now()}]}, {merge:true});
+  showToast('✅ '+w.name+' ajouté au créneau');
+};
+
+window.removeWorkerFromSlot = async function(slotId, workerId) {
+  const slot = allSlots.find(s=>s.id===slotId);
+  if (!slot) return;
+  if (!confirm('Retirer ce worker du créneau ?')) return;
+  const signups = (slot.signups||[]).filter(su=>su.workerId!==workerId);
+  await setDoc(doc(db,'slots',slotId), {signups}, {merge:true});
+  showToast('Worker retiré du créneau');
+};
+
+window.setPlanView = function(mode) {
+  planViewMode = mode;
+  document.getElementById('planPillWeek').classList.toggle('active', mode==='week');
+  document.getElementById('planPillDay').classList.toggle('active', mode==='day');
+  document.getElementById('planWeekNav').style.display = mode==='week' ? 'flex' : 'none';
+  document.getElementById('planDayNav').style.display = mode==='day' ? 'flex' : 'none';
+  document.getElementById('planWeekGrid').style.display = mode==='week' ? 'block' : 'none';
+  document.getElementById('planDayDetail').style.display = mode==='day' ? 'block' : 'none';
+  renderPlanning();
+};
+
+window.changePlanWeek = function(d) {
+  planWeekOff += d;
+  renderPlanning();
+};
+
+window.changePlanDay = function(d) {
+  const dt = new Date(planSelectedDate+'T00:00:00');
+  dt.setDate(dt.getDate()+d);
+  planSelectedDate = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  renderPlanning();
+};
+
+window.openPlanDay = function(dateStr) {
+  planSelectedDate = dateStr;
+  window.setPlanView('day');
+};
 
 window.approveCancelRequest = async function(reqId){
   const req=allCancelRequests.find(r=>r.id===reqId);
