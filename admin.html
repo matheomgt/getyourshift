@@ -1309,12 +1309,17 @@ window.createSlot = async function(){
   if(capacity<1){showToast('Entre un nombre de places (min 1)');return;}
 
   const slotId='slot_'+Date.now();
-  await setDoc(doc(db,'slots',slotId),{
-    date,suburb,capacity,notes,workDescription,hours,
-    suburbLat:null, suburbLng:null, geoStatus:'pending',
-    signups:[],createdAt:Date.now()
-  });
-  await setDoc(doc(db,'slotAddresses',slotId),{address, lat:null, lng:null});
+  try {
+    await setDoc(doc(db,'slots',slotId),{
+      date,suburb,capacity,notes,workDescription,hours,
+      suburbLat:null, suburbLng:null, geoStatus:'pending',
+      signups:[],createdAt:Date.now()
+    });
+    await setDoc(doc(db,'slotAddresses',slotId),{address, lat:null, lng:null});
+  } catch(err) {
+    alert('❌ La création du créneau a échoué : '+err.message+'\n\nRien n\'a été enregistré côté serveur — réessaie, et si ça persiste montre-moi ce message exact.');
+    return;
+  }
 
   document.getElementById('nsAddr').value='';
   document.getElementById('nsSuburb').value='';
@@ -1326,7 +1331,9 @@ window.createSlot = async function(){
   window.toggleNewSlot();
   showToast('✅ Créneau créé ! Localisation en arrière-plan…');
 
-  runBackgroundGeocode(slotId, address, suburb); // pas de await : ne bloque jamais la création
+  runBackgroundGeocode(slotId, address, suburb).catch(err => {
+    console.error('Geocode arrière-plan échoué pour', slotId, err);
+  }); // pas de await : ne bloque jamais la création
 };
 
 window.saveSlotNotes = async function(slotId){
