@@ -579,6 +579,17 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
   </div>
 </div>
 
+<!-- MODAL CONFIRMATION WHATSAPP APRES ANNULATION TARDIVE -->
+<div class="modal-overlay" id="cancelWaModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✅ Demande envoyée</div>
+    <div class="modal-sub">Pour être sûr que ta demande soit vue à temps, confirme-la aussi directement par message à Matheo.</div>
+    <a class="confirm-btn" id="cancelWaLink" href="#" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;background:#25D366;">💬 Confirmer sur WhatsApp</a>
+    <button class="confirm-btn" onclick="document.getElementById('cancelWaModal').classList.remove('open')" style="background:none;color:var(--text-soft);margin-top:8px;">Plus tard</button>
+  </div>
+</div>
+
 <!-- MODAL DETAIL CRENEAU -->
 <div class="modal-overlay" id="slotDetailModal">
   <div class="modal-sheet">
@@ -650,8 +661,8 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
         <ul>
           <li>Dans l'onglet "Pointage" : bouton <strong>Arrivée</strong> le matin, bouton <strong>Départ</strong> en fin de journée.</li>
           <li>Une photo est obligatoire à chaque pointage.</li>
-          <li>Autorise ta localisation (GPS) — elle est enregistrée avec le pointage.</li>
-          <li>Sans photo et sans GPS, le pointage ne peut pas être validé.</li>
+          <li>Autorise ta localisation (GPS) si possible — elle est enregistrée avec le pointage.</li>
+          <li>Sans GPS, le pointage reste validé (marqué "sans localisation") — seule la photo est indispensable.</li>
         </ul>
       </div>
     </div>
@@ -673,13 +684,31 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <div class="guide-section-body">
         <ul>
           <li>Avant 20h la veille du créneau : tu peux te désinscrire librement, en un tap.</li>
-          <li>Après 20h la veille (moins de 24h avant) : il faut écrire une raison, et ton responsable doit valider la demande avant que la désinscription soit effective.</li>
+          <li>Après 20h la veille (moins de 24h avant) : il faut écrire une raison, et ton responsable doit valider la demande avant que la désinscription soit effective. Un lien WhatsApp s'affiche ensuite pour confirmer directement ta demande à Matheo.</li>
         </ul>
         <div class="guide-note">💡 1 joker par mois pour une désinscription tardive sans conséquence — au-delà, chaque cas est examiné avec ton responsable.</div>
       </div>
     </div>
 
     <button class="confirm-btn" onclick="closeGuide()">Fermer</button>
+  </div>
+</div>
+
+<!-- MODAL POINTAGE SANS LOCALISATION -->
+<div class="modal-overlay" id="nolocModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📡 Pointage enregistré sans position</div>
+    <div class="modal-sub">Ton pointage est bien validé — active ta localisation pour la prochaine fois</div>
+    <div class="guide-section-body">
+      <ul>
+        <li>Ouvre <strong>Réglages</strong> sur ton iPhone.</li>
+        <li><strong>Confidentialité et sécurité</strong> → <strong>Service de localisation</strong> : vérifie qu'il est activé.</li>
+        <li>Descends jusqu'à <strong>Safari</strong> (ou Safari Websites) dans la liste des apps, et choisis <strong>"Lors de l'utilisation de l'app"</strong>.</li>
+        <li>Reviens ici et recharge la page — le bouton "Autoriser ma localisation" te demandera à nouveau l'accès.</li>
+      </ul>
+    </div>
+    <button class="confirm-btn" onclick="document.getElementById('nolocModal').classList.remove('open')" style="margin-top:14px;">Compris</button>
   </div>
 </div>
 
@@ -691,7 +720,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD7TxMgSh0hkuz0jgAFCh3I7SvQkHzorgc",
@@ -704,6 +733,28 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// ── JOURNAL D'ANOMALIES (visible côté admin > Réglages) ──
+let currentAction = 'chargement initial';
+function setCurrentAction(action) { currentAction = action; }
+async function logError(message, context) {
+  try {
+    const logId = 'err_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    await setDoc(doc(db,'errorLogs',logId), {
+      message: String(message).slice(0,500),
+      context: (context || currentAction || '') + ' (worker)',
+      userAgent: navigator.userAgent,
+      timestamp: Date.now(),
+      date: new Date().toLocaleString('fr-FR')
+    });
+  } catch(e) { /* si le log échoue lui-même, on abandonne — pas de boucle */ }
+}
+window.addEventListener('error', e => {
+  logError(e.message || 'Erreur JS inconnue', 'window.onerror — '+currentAction);
+});
+window.addEventListener('unhandledrejection', e => {
+  logError((e.reason && e.reason.message) || String(e.reason) || 'Promise rejetée', 'unhandledrejection — '+currentAction);
+});
 
 // ── STATE ──
 let currentWorker = null;
@@ -724,6 +775,10 @@ let cancelingSlotId = null;
 let addrCache = {}; // fetched on-demand, only for slots the worker is confirmed on
 let addrUnsubs = {}; // slotId -> live listener, so admin edits reach an already-open session
 let openSlotDetailId = null; // slotId currently shown in the detail modal, for live refresh
+
+// URL du Web App Apps Script déployé depuis google-apps-script/Code.gs (fonction doPost).
+// Tant qu'elle n'est pas renseignée, l'email "X/Y workers on site" est silencieusement ignoré.
+const ARRIVAL_EMAIL_WEBHOOK = 'https://script.google.com/macros/s/AKfycbxeBcx3i_ZeL0aqMjGmLfnOe-gBoifUpiBTZVY_Y0Gca_n3NaoWKhKyzI-Hr8Ps9LvV/exec';
 
 // ── UTILS ──
 function todayStr() {
@@ -759,6 +814,23 @@ function setSyncing(on) {
   else { dot.classList.remove('syncing'); txt.textContent = 'Synchronisé ✓'; }
 }
 
+// ── CLIENT (règles de paye) ──
+// Client unique pour l'instant (Paysagisme). Valeurs de repli = comportement historique en dur,
+// utilisées seulement si le doc Firestore est introuvable.
+let CLIENT = {
+  tarifClientJour: 275,
+  commissionAgencePct: 10,
+  tarifWorkerJuniorJour: 220,
+  tarifWorkerSeniorJour: 250,
+  seuilSeniorJours: 7
+};
+async function loadClient() {
+  try {
+    const snap = await getDoc(doc(db,'clients','paysagisme'));
+    if (snap.exists()) CLIENT = {...CLIENT, ...snap.data()};
+  } catch(e) { logError(e.message||e, 'loadClient'); }
+}
+
 // ── LOAD WORKERS FROM FIREBASE ──
 async function loadWorkers() {
   const snap = await getDocs(collection(db, 'workers'));
@@ -775,7 +847,7 @@ function renderWorkerGrid() {
     return;
   }
   grid.innerHTML = allWorkers.map((w, i) => {
-    const isSenior = (w.totalDays||0) >= 7 || (w.customRate||0) >= 250;
+    const isSenior = (w.totalDays||0) >= CLIENT.seuilSeniorJours || (w.customRate||0) >= CLIENT.tarifWorkerSeniorJour;
     const badge = isSenior ? 'Senior ⭐' : 'Junior';
     const badgeColor = isSenior ? '#c9a84c' : '#7a9e7a';
     return '<div class="worker-btn" id="wb'+i+'" onclick="selectWorker('+i+')">' +
@@ -920,7 +992,7 @@ function initApp() {
   document.getElementById('hDay').textContent = now.toLocaleDateString('fr-FR',{weekday:'long'}).toUpperCase();
   document.getElementById('hDate').textContent = now.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
   document.getElementById('hName').textContent = currentWorker.name;
-  const rate = (currentWorker.totalDays||0) >= 7 ? 250 : 220;
+  const rate = (currentWorker.totalDays||0) >= CLIENT.seuilSeniorJours ? CLIENT.tarifWorkerSeniorJour : CLIENT.tarifWorkerJuniorJour;
   document.getElementById('hSub').textContent = '$'+rate+'/jour · '+(currentWorker.totalDays||0)+' jours au total';
 
   // Live listener on entries
@@ -973,7 +1045,7 @@ function computeSalary(daysCount) {
   const totalBefore = (currentWorker.totalDays||0) - daysCount;
   let sal=0, d220=0, d250=0;
   for (let i=0; i<daysCount; i++) {
-    if (totalBefore+i < 7) { sal+=220; d220++; } else { sal+=250; d250++; }
+    if (totalBefore+i < CLIENT.seuilSeniorJours) { sal+=CLIENT.tarifWorkerJuniorJour; d220++; } else { sal+=CLIENT.tarifWorkerSeniorJour; d250++; }
   }
   return {sal, d220, d250};
 }
@@ -981,7 +1053,7 @@ function computeSalary(daysCount) {
 // Solde dû (ardoise) — jours travaillés depuis toujours × taux, indépendant du calcul de commission
 function totalEarned(w) {
   const days = w.totalDays||0;
-  const base = w.customRate ? days*w.customRate : (()=>{let s=0;for(let i=0;i<days;i++)s+=(i<7?220:250);return s;})();
+  const base = w.customRate ? days*w.customRate : (()=>{let s=0;for(let i=0;i<days;i++)s+=(i<CLIENT.seuilSeniorJours?CLIENT.tarifWorkerJuniorJour:CLIENT.tarifWorkerSeniorJour);return s;})();
   return base+(w.extraAmount||0);
 }
 function totalPaidAmount(w) {
@@ -994,19 +1066,20 @@ function soldeDu(w) {
 // ── HOME ──
 function renderHome() {
   const totalDays = currentWorker.totalDays||0;
-  const rate = currentWorker.customRate || (totalDays >= 7 ? 250 : 220);
-  const daysToUnlock = Math.max(0, 7-totalDays);
+  const seuil = CLIENT.seuilSeniorJours;
+  const rate = currentWorker.customRate || (totalDays >= seuil ? CLIENT.tarifWorkerSeniorJour : CLIENT.tarifWorkerJuniorJour);
+  const daysToUnlock = Math.max(0, seuil-totalDays);
   const weekDays = getWeekEntries(0);
   const weekCount = weekDays.length;
   const weekPct = Math.min(Math.round(weekCount/5*100),999);
   const {sal} = computeSalary(weekCount);
   const {sal:salPlus} = computeSalary(weekCount+1);
-  const salMax = rate===250 ? 250*5 : (Math.min(daysToUnlock,5)*220+Math.max(0,5-daysToUnlock)*250);
+  const salMax = rate===CLIENT.tarifWorkerSeniorJour ? CLIENT.tarifWorkerSeniorJour*5 : (Math.min(daysToUnlock,5)*CLIENT.tarifWorkerJuniorJour+Math.max(0,5-daysToUnlock)*CLIENT.tarifWorkerSeniorJour);
 
   document.getElementById('bWeekDays').textContent = weekCount;
   document.getElementById('bWeekPct').textContent = Math.min(weekPct,100)+'%';
   document.getElementById('bRate').textContent = '$'+rate;
-  document.getElementById('bRateNote').textContent = rate===220 ? '+$30/j dans '+daysToUnlock+'j' : '✓ Taux senior';
+  document.getElementById('bRateNote').textContent = rate===CLIENT.tarifWorkerJuniorJour ? '+$'+(CLIENT.tarifWorkerSeniorJour-CLIENT.tarifWorkerJuniorJour)+'/j dans '+daysToUnlock+'j' : '✓ Taux senior';
   setTimeout(() => { document.getElementById('bWeekBar').style.width = Math.min(weekCount/5*100,100)+'%'; }, 200);
 
   document.getElementById('salaryCurrent').textContent = sal.toLocaleString();
@@ -1015,18 +1088,18 @@ function renderHome() {
   setTimeout(() => { document.getElementById('salaryBar').style.width = (salMax>0 ? sal/salMax*100 : 0)+'%'; }, 300);
 
   // Unlock
-  document.getElementById('unlockBadge').textContent = rate===250 ? '✓ SENIOR' : 'J'+(Math.min(totalDays,6)+1)+'/7';
-  document.getElementById('unlockBadge').className = 'unlock-badge'+(rate===250?' senior':'');
-  document.getElementById('unlockSub').textContent = rate===250 ? 'Tu es au taux maximum !' : 'Plus que '+daysToUnlock+' jour(s) pour $250';
-  document.getElementById('unlockCta').innerHTML = rate===250 ? 'Tu es au <strong>taux senior $250</strong> 🏆' : 'Il te reste <strong>'+daysToUnlock+' jour(s)</strong> à faire';
+  document.getElementById('unlockBadge').textContent = rate===CLIENT.tarifWorkerSeniorJour ? '✓ SENIOR' : 'J'+(Math.min(totalDays,seuil-1)+1)+'/'+seuil;
+  document.getElementById('unlockBadge').className = 'unlock-badge'+(rate===CLIENT.tarifWorkerSeniorJour?' senior':'');
+  document.getElementById('unlockSub').textContent = rate===CLIENT.tarifWorkerSeniorJour ? 'Tu es au taux maximum !' : 'Plus que '+daysToUnlock+' jour(s) pour $'+CLIENT.tarifWorkerSeniorJour;
+  document.getElementById('unlockCta').innerHTML = rate===CLIENT.tarifWorkerSeniorJour ? 'Tu es au <strong>taux senior $'+CLIENT.tarifWorkerSeniorJour+'</strong> 🏆' : 'Il te reste <strong>'+daysToUnlock+' jour(s)</strong> à faire';
 
   let dotsHtml = '';
-  for (let i=0; i<7; i++) {
-    const done = i<totalDays, cur = i===Math.min(totalDays,6)&&totalDays<7;
+  for (let i=0; i<seuil; i++) {
+    const done = i<totalDays, cur = i===Math.min(totalDays,seuil-1)&&totalDays<seuil;
     dotsHtml += '<div class="ldot'+(done?' done':cur?' current':'')+'">'+( i+1)+'</div>';
   }
   document.getElementById('levelDots').innerHTML = dotsHtml;
-  setTimeout(() => { document.getElementById('levelFill').style.width = Math.min(totalDays/7*100,100)+'%'; }, 400);
+  setTimeout(() => { document.getElementById('levelFill').style.width = Math.min(totalDays/seuil*100,100)+'%'; }, 400);
 
   const dayNames = ['L','M','M','J','V'];
   const todayDow = (new Date().getDay()+6)%7;
@@ -1354,6 +1427,10 @@ window.submitLateCancel = async function() {
   });
   document.getElementById('cancelModal').classList.remove('open');
   showToast('⏳ Demande envoyée, en attente de validation');
+
+  const waText = 'Salut Matheo, je confirme ma demande d\'annulation tardive pour le créneau du '+formatDate(slot.date)+' ('+slot.suburb+'). Raison : '+reason;
+  document.getElementById('cancelWaLink').href = 'https://wa.me/33619777226?text='+encodeURIComponent(waText);
+  document.getElementById('cancelWaModal').classList.add('open');
 };
 
 // ── RECAP ──
@@ -1371,7 +1448,7 @@ function renderRecap() {
     const byDay = {};
     wkEntries.forEach(e => { if(!byDay[e.date]) byDay[e.date]=[]; byDay[e.date].push(e); });
     daysList.innerHTML = weekDays.map((d,i) => {
-      const rate = currentWorker.customRate || ((totalBefore+i)<7 ? 220 : 250);
+      const rate = currentWorker.customRate || ((totalBefore+i)<CLIENT.seuilSeniorJours ? CLIENT.tarifWorkerJuniorJour : CLIENT.tarifWorkerSeniorJour);
       const addr = byDay[d]&&byDay[d][0] ? byDay[d][0].address : '—';
       return '<div class="recap-day"><div class="recap-day-date">'+formatDate(d)+'</div><div class="recap-day-addr">'+addr+'</div><div class="recap-day-amt r'+rate+'">$'+rate+'</div></div>';
     }).join('');
@@ -1395,10 +1472,10 @@ function renderRecap() {
 // ── PROFIL ──
 function renderProfil() {
   const totalDays = currentWorker.totalDays||0;
-  const rate = currentWorker.customRate || (totalDays>=7?250:220);
+  const rate = currentWorker.customRate || (totalDays>=CLIENT.seuilSeniorJours?CLIENT.tarifWorkerSeniorJour:CLIENT.tarifWorkerJuniorJour);
   document.getElementById('profAvatar').textContent = currentWorker.name[0].toUpperCase();
   document.getElementById('profName').textContent = currentWorker.name;
-  document.getElementById('profRate').textContent = '$'+rate+'/jour · '+(rate===220?'Taux junior':'Taux senior ✓');
+  document.getElementById('profRate').textContent = '$'+rate+'/jour · '+(rate===CLIENT.tarifWorkerJuniorJour?'Taux junior':'Taux senior ✓');
   document.getElementById('profDays').textContent = totalDays;
   document.getElementById('profEarned').textContent = '$'+totalEarned(currentWorker).toLocaleString();
   const addrs = [...new Set(allEntries.filter(e=>e.address).map(e=>e.address))];
@@ -1468,8 +1545,10 @@ window.openModal = function(type) {
 
 document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
 document.getElementById('cancelModal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+document.getElementById('cancelWaModal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
 document.getElementById('slotDetailModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeSlotDetail(); });
 document.getElementById('guideModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeGuide(); });
+document.getElementById('nolocModal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
 
 window.openGuide = function() { document.getElementById('guideModal').classList.add('open'); };
 window.closeGuide = function() { document.getElementById('guideModal').classList.remove('open'); };
@@ -1507,7 +1586,7 @@ window.requestGPS = function() {
   const btn = document.getElementById('gpsBtn');
   const pill = document.getElementById('gpsPill');
   if (!navigator.geolocation) {
-    pill.style.display='flex'; pill.className='gps-pill err'; pill.textContent='❌ GPS non supporté';
+    pill.style.display='flex'; pill.className='gps-pill err'; pill.textContent='❌ GPS non supporté — le pointage reste possible sans localisation';
     return;
   }
   btn.disabled=true; btn.textContent='⏳ En cours…';
@@ -1517,33 +1596,55 @@ window.requestGPS = function() {
       currentGPS = {lat:p.coords.latitude.toFixed(5), lng:p.coords.longitude.toFixed(5), acc:Math.round(p.coords.accuracy)};
       pill.className='gps-pill ok'; pill.textContent='✅ Position (±'+currentGPS.acc+'m)';
       btn.style.display='none';
-      if (currentPhoto) { document.getElementById('confirmBtn').style.opacity='1'; document.getElementById('confirmBtn').style.pointerEvents='auto'; }
     },
     err => {
       pill.className='gps-pill err';
-      pill.textContent = err.code===1 ? '❌ Refusé — Réglages > Safari > Localisation' : '❌ Erreur GPS — réessaie';
+      pill.textContent = (err.code===1 ? '❌ Localisation refusée' : '❌ Erreur GPS') + ' — le pointage reste possible, mais sans position';
       btn.disabled=false; btn.textContent='🔄 Réessayer';
     },
     {enableHighAccuracy:true, timeout:15000, maximumAge:0}
   );
 };
 
-// Watch for both photo + GPS to unlock confirm
+// Le pointage n'est jamais bloqué par le GPS — seule la photo est requise pour débloquer la validation
 const photoInput = document.getElementById('photoInput');
 const origHandle = window.handlePhoto;
 window.handlePhoto = function(e) {
   origHandle(e);
   setTimeout(() => {
-    if (currentGPS) { document.getElementById('confirmBtn').style.opacity='1'; document.getElementById('confirmBtn').style.pointerEvents='auto'; }
+    if (currentPhoto) { document.getElementById('confirmBtn').style.opacity='1'; document.getElementById('confirmBtn').style.pointerEvents='auto'; }
   }, 500);
 };
+
+// Email "X/Y workers on site" à chaque arrivée — un email par chantier confirmé du
+// worker ce jour-là. X/Y calculés depuis les données déjà en cache localement (allSlots/
+// allEntries), pas de round-trip Firestore supplémentaire côté Apps Script.
+function sendArrivalEmail(justSubmittedEntry) {
+  if (!ARRIVAL_EMAIL_WEBHOOK) return;
+  const today = justSubmittedEntry.date;
+  const todaysSlots = allSlots.filter(s => s.date===today && (s.signups||[]).some(su=>su.workerId===currentWorker.id));
+  todaysSlots.forEach(slot => {
+    const confirmedIds = (slot.signups||[]).map(su=>su.workerId);
+    const arrivedIds = new Set(
+      allEntries.filter(en=>en.date===today && en.type==='start' && confirmedIds.includes(en.workerId)).map(en=>en.workerId)
+    );
+    arrivedIds.add(currentWorker.id); // le listener local peut ne pas avoir encore reçu notre propre écriture
+    const arrivedNames = (slot.signups||[])
+      .filter(su=>arrivedIds.has(su.workerId))
+      .map(su=>su.workerName.split(' ')[0]);
+    const X = arrivedNames.length, Y = confirmedIds.length;
+    const subject = X+'/'+Y+' workers on site — '+slot.suburb;
+    const body = 'Chantier : '+slot.suburb+' ('+formatDate(today)+')\nDéjà arrivés ('+X+'/'+Y+') : '+arrivedNames.join(', ');
+    fetch(ARRIVAL_EMAIL_WEBHOOK, {method:'POST', mode:'no-cors', body: JSON.stringify({subject, body})})
+      .catch(err => logError('Envoi email arrivée échoué : '+err.message, 'sendArrivalEmail'));
+  });
+}
 
 window.confirmPointage = async function() {
   if (isSubmittingPointage) return;
 
   const addr = document.getElementById('modalAddr').value.trim();
   if (!currentPhoto) { showToast('📸 Photo obligatoire'); return; }
-  if (!currentGPS) { showToast('📡 GPS requis'); return; }
   if (!addr) { showToast('📍 Adresse obligatoire'); return; }
 
   const today = todayStr();
@@ -1567,6 +1668,7 @@ window.confirmPointage = async function() {
     date: today,
     address: addr,
     gps: currentGPS,
+    noLoc: !currentGPS,
     photo: currentPhoto,
     time: new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
     timestamp: Date.now()
@@ -1584,8 +1686,15 @@ window.confirmPointage = async function() {
       if(wi>=0) allWorkers[wi].totalDays = newTotal;
     }
     document.getElementById('modalOverlay').classList.remove('open');
-    showToast('✅ '+(currentModalType==='start'?'Arrivée':'Départ')+' enregistré !');
+    if (entry.noLoc) {
+      showToast('✅ '+(currentModalType==='start'?'Arrivée':'Départ')+' enregistré (sans localisation)');
+      document.getElementById('nolocModal').classList.add('open');
+    } else {
+      showToast('✅ '+(currentModalType==='start'?'Arrivée':'Départ')+' enregistré !');
+    }
+    if (currentModalType==='start') sendArrivalEmail(entry);
   } catch(err) {
+    logError('Pointage échoué : '+err.message, 'pointage '+currentModalType);
     showToast('❌ Erreur de synchronisation');
     setSyncing(false);
     confirmBtn.style.opacity = '1';
@@ -1598,11 +1707,13 @@ window.confirmPointage = async function() {
 // ── BOOT ──
 async function boot() {
   try {
+    await loadClient();
     await loadWorkers();
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('pinScreen').style.display = 'flex';
     renderWorkerGrid();
   } catch(err) {
+    logError('Chargement initial échoué : '+err.message, 'boot / loadWorkers');
     document.getElementById('loadingScreen').innerHTML = '<div style="color:white;text-align:center;padding:32px;font-family:sans-serif;">Erreur de connexion.<br>Vérifie ta connexion internet.</div>';
   }
 }

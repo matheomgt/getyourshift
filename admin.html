@@ -445,6 +445,26 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
         <div id="ficheChantiersList"></div>
       </div>
       <div class="card" style="margin-bottom:10px;">
+        <div class="card-title">📍 Historique des pointages</div>
+        <div id="fichePointagesList"></div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-title">💰 Paye</div>
+        <div id="fichePaySummary"></div>
+        <button class="btn btn-sage" onclick="toggleFichePayForm()" style="margin:10px 0 8px;">💳 Marquer un paiement</button>
+        <div class="expand-panel" id="fichePayForm">
+          <label class="inp-lbl">Montant ($)</label>
+          <input class="inp" id="fichePayAmount" type="number" placeholder="0">
+          <label class="inp-lbl">Note (optionnel)</label>
+          <input class="inp" id="fichePayNote" placeholder="ex: virement du 6 juillet">
+          <button class="btn btn-forest" onclick="addFichePayment()">✅ Enregistrer le paiement</button>
+        </div>
+        <div style="margin-top:12px;">
+          <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-soft);margin-bottom:6px;">Historique des paiements</div>
+          <div id="fichePayHistory"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
         <div class="card-title">📝 Notes privées</div>
         <textarea class="note-area" id="ficheNotes" placeholder="Notes sur ce worker…" oninput="saveFicheNotes()"></textarea>
         <div style="font-size:10px;color:var(--text-soft);margin-top:4px;">Non visible par le worker</div>
@@ -535,6 +555,13 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <div class="card-title">Données</div>
       <button class="btn btn-danger" onclick="clearAllData()">🗑 Effacer toutes les données</button>
     </div>
+    <div class="card" style="margin-top:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="card-title" style="margin-bottom:0;">🐞 Journal d'anomalies</div>
+        <button class="btn btn-danger" onclick="clearErrorLogs()" style="padding:6px 12px;font-size:11px;">Vider</button>
+      </div>
+      <div id="errorLogList"></div>
+    </div>
   </div>
 </div>
 
@@ -616,6 +643,28 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// ── JOURNAL D'ANOMALIES ──
+let currentAction = 'chargement initial';
+function setCurrentAction(action) { currentAction = action; }
+async function logError(message, context) {
+  try {
+    const logId = 'err_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    await setDoc(doc(db,'errorLogs',logId), {
+      message: String(message).slice(0,500),
+      context: context || currentAction || '',
+      userAgent: navigator.userAgent,
+      timestamp: Date.now(),
+      date: new Date().toLocaleString('fr-FR')
+    });
+  } catch(e) { /* si le log lui-même échoue, on ne peut rien faire de plus — pas de boucle */ }
+}
+window.addEventListener('error', e => {
+  logError(e.message || 'Erreur JS inconnue', 'window.onerror — '+currentAction);
+});
+window.addEventListener('unhandledrejection', e => {
+  logError((e.reason && e.reason.message) || String(e.reason) || 'Promise rejetée', 'unhandledrejection — '+currentAction);
+});
+
 // ── STATE ──
 const ADMIN_PIN_KEY = 'gys_admin_pin';
 let allWorkers = [];
@@ -628,7 +677,8 @@ let currentFicheId = null;
 let ficheCalOff = 0;
 let editingWorkerId = null;
 let allSlots = [], allCancelRequests = [], allSlotAddresses = {};
-let unsubWorkers = null, unsubEntries = null, unsubSlots = null, unsubSlotAddresses = null, unsubCancelReqs = null;
+let allErrorLogs = [];
+let unsubWorkers = null, unsubEntries = null, unsubSlots = null, unsubSlotAddresses = null, unsubCancelReqs = null, unsubErrorLogs = null;
 
 // ── UTILS ──
 function todayStr() {
@@ -705,8 +755,26 @@ document.getElementById('lockBtn').addEventListener('click', () => {
   for(let i=0;i<4;i++){const el=document.getElementById('pd'+i);if(el)el.classList.remove('filled');}
 });
 
+// ── CLIENT (règles de paye) ──
+// Client unique pour l'instant (Paysagisme). Valeurs de repli = comportement historique en dur,
+// utilisées seulement si le doc Firestore est introuvable.
+let CLIENT = {
+  tarifClientJour: 275,
+  commissionAgencePct: 10,
+  tarifWorkerJuniorJour: 220,
+  tarifWorkerSeniorJour: 250,
+  seuilSeniorJours: 7
+};
+async function loadClient() {
+  try {
+    const snap = await getDoc(doc(db,'clients','paysagisme'));
+    if (snap.exists()) CLIENT = {...CLIENT, ...snap.data()};
+  } catch(e) { logError(e.message||e, 'loadClient'); }
+}
+
 // ── INIT ADMIN ──
 async function initAdmin() {
+  await loadClient();
   const now=new Date();
   document.getElementById('adminDate').textContent=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('dashWeekLbl').textContent=weekLbl(dashWeekOff);
@@ -756,6 +824,14 @@ async function initAdmin() {
     setSyncing(false);
   });
 
+  if(unsubErrorLogs) unsubErrorLogs();
+  unsubErrorLogs = onSnapshot(collection(db,'errorLogs'), snap => {
+    allErrorLogs=[];
+    snap.forEach(d=>allErrorLogs.push({id:d.id,...d.data()}));
+    allErrorLogs.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+    refreshCurrentTab();
+  });
+
   // Check missing pointages
   setTimeout(checkMissingPointages, 2000);
 }
@@ -784,6 +860,7 @@ function renderTab(id) {
   else if(id==='fiches') renderFicheSelect();
   else if(id==='paiements') renderPaiements();
   else if(id==='planning') renderPlanning();
+  else if(id==='settings') renderErrorLogs();
 }
 
 // ── WEEK HELPERS ──
@@ -809,20 +886,25 @@ function getWorkerWeekDays(wId, off) {
   return [...new Set(week.map(en=>en.date))].sort();
 }
 
+// Montant total facturé au patron pour N jours : tarif de base + commission agence en sus
+function bossTotal(days) {
+  return Math.round(days*CLIENT.tarifClientJour*(1+CLIENT.commissionAgencePct/100));
+}
+
 function computeSalary(wId, daysArr) {
   const w=allWorkers.find(x=>x.id===wId);
   if(!w) return {sal:0,d220:0,d250:0};
   const totalBefore=(w.totalDays||0)-daysArr.length;
   if(w.customRate) return {sal:w.customRate*daysArr.length,d220:0,d250:daysArr.length};
   let sal=0,d220=0,d250=0;
-  for(let i=0;i<daysArr.length;i++){if(totalBefore+i<7){sal+=220;d220++;}else{sal+=250;d250++;}}
+  for(let i=0;i<daysArr.length;i++){if(totalBefore+i<CLIENT.seuilSeniorJours){sal+=CLIENT.tarifWorkerJuniorJour;d220++;}else{sal+=CLIENT.tarifWorkerSeniorJour;d250++;}}
   return {sal,d220,d250};
 }
 
 // Solde dû (ardoise) — jours travaillés depuis toujours × taux, indépendant du calcul de commission
 function totalEarned(w) {
   const days=w.totalDays||0;
-  const base=w.customRate ? days*w.customRate : (()=>{let s=0;for(let i=0;i<days;i++)s+=(i<7?220:250);return s;})();
+  const base=w.customRate ? days*w.customRate : (()=>{let s=0;for(let i=0;i<days;i++)s+=(i<CLIENT.seuilSeniorJours?CLIENT.tarifWorkerJuniorJour:CLIENT.tarifWorkerSeniorJour);return s;})();
   return base+(w.extraAmount||0);
 }
 function totalPaid(w) {
@@ -863,13 +945,13 @@ function renderDashboard() {
     const days=getWorkerWeekDays(w.id,dashWeekOff);
     const {sal,d220,d250}=computeSalary(w.id,days);
     const extra=w.extraAmount||0;
-    const boss=days.length*275;
+    const boss=bossTotal(days.length);
     totalBoss+=boss; totalPaid+=sal+extra;
-    const isSenior=(w.totalDays||0)>=7||(w.customRate||0)>=250;
+    const isSenior=(w.totalDays||0)>=CLIENT.seuilSeniorJours||(w.customRate||0)>=CLIENT.tarifWorkerSeniorJour;
     rowsHtml+='<div class="stat-row">' +
       '<div class="stat-av'+(isSenior?' senior':'')+'">'+w.name[0].toUpperCase()+'</div>' +
       '<div class="stat-info"><div class="stat-name">'+w.name+'</div>' +
-      '<div class="stat-meta">'+days.length+'j · '+(d220?d220+'×$220':'')+( d220&&d250?' + ':'')+(d250?d250+'×$250':'')+(extra?' + $'+extra+' (extra)':'')+'</div></div>' +
+      '<div class="stat-meta">'+days.length+'j · '+(d220?d220+'×$'+CLIENT.tarifWorkerJuniorJour:'')+( d220&&d250?' + ':'')+(d250?d250+'×$'+CLIENT.tarifWorkerSeniorJour:'')+(extra?' + $'+extra+' (extra)':'')+'</div></div>' +
       '<div class="stat-right"><div class="stat-val">$'+(sal+extra).toLocaleString()+'</div><div class="stat-boss">boss: $'+boss+'</div></div>' +
       '</div>';
   });
@@ -901,9 +983,9 @@ function renderWorkers() {
   const el=document.getElementById('workerCards');
   if(!allWorkers.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun worker</div>';return;}
   el.innerHTML=allWorkers.map(w=>{
-    const rate=w.customRate||((w.totalDays||0)>=7?250:220);
-    const isSenior=(w.totalDays||0)>=7||(w.customRate||0)>=250;
-    const pct=Math.min((w.totalDays||0)/7*100,100);
+    const rate=w.customRate||((w.totalDays||0)>=CLIENT.seuilSeniorJours?CLIENT.tarifWorkerSeniorJour:CLIENT.tarifWorkerJuniorJour);
+    const isSenior=(w.totalDays||0)>=CLIENT.seuilSeniorJours||(w.customRate||0)>=CLIENT.tarifWorkerSeniorJour;
+    const pct=Math.min((w.totalDays||0)/CLIENT.seuilSeniorJours*100,100);
     const days=getWorkerWeekDays(w.id,0);
     const {sal}=computeSalary(w.id,days);
     return '<div class="worker-card">' +
@@ -911,7 +993,7 @@ function renderWorkers() {
       '<div class="worker-av'+(isSenior?' senior':'')+'">'+w.name[0].toUpperCase()+'</div>' +
       '<div><div class="worker-name">'+w.name+'</div><div class="worker-meta">'+(w.totalDays||0)+' jours total · '+days.length+'j cette semaine</div></div>' +
       '<div class="rate-badge '+(isSenior?'senior':'normal')+'" style="margin-left:auto;">$'+rate+'/j</div></div>' +
-      '<div class="prog-row"><span class="prog-lbl">Déblocage $250</span><span class="prog-val">'+(w.totalDays||0)+'/7j</span></div>' +
+      '<div class="prog-row"><span class="prog-lbl">Déblocage $'+CLIENT.tarifWorkerSeniorJour+'</span><span class="prog-val">'+(w.totalDays||0)+'/'+CLIENT.seuilSeniorJours+'j</span></div>' +
       '<div class="prog-track"><div class="prog-fill prog-gold" style="width:'+pct+'%"></div></div>' +
       '<div class="prog-row"><span class="prog-lbl">Cette semaine</span><span class="prog-val">'+days.length+'/5j · $'+sal+'</span></div>' +
       '<div class="prog-track"><div class="prog-fill prog-green" style="width:'+Math.min(days.length/5*100,100)+'%"></div></div>' +
@@ -974,8 +1056,8 @@ function renderPersonRow(g) {
       '<div class="ptg-person-name">'+g.workerName+'</div>' +
       '<div class="ptg-person-meta">'+(addr||'')+'</div>' +
       '<div class="ptg-person-times">' +
-        (s?'<span class="ptg-time-tag start">🌅 '+s.time+'</span>':'<span class="ptg-time-tag missing">🌅 —</span>') +
-        (e?'<span class="ptg-time-tag end">🌇 '+e.time+'</span>':'<span class="ptg-time-tag missing">🌇 en cours</span>') +
+        (s?'<span class="ptg-time-tag start">🌅 '+s.time+(s.noLoc||!s.gps?' · 📡 sans loc':'')+'</span>':'<span class="ptg-time-tag missing">🌅 —</span>') +
+        (e?'<span class="ptg-time-tag end">🌇 '+e.time+(e.noLoc||!e.gps?' · 📡 sans loc':'')+'</span>':'<span class="ptg-time-tag missing">🌇 en cours</span>') +
       '</div>' +
     '</div>' +
     '<div class="ptg-person-thumbs">' +
@@ -1122,7 +1204,7 @@ function renderFicheSelect() {
   const el=document.getElementById('ficheSelectList');
   if(!allWorkers.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun worker</div>';return;}
   el.innerHTML=allWorkers.map(w=>{
-    const rate=(w.totalDays||0)>=7?250:220;
+    const rate=(w.totalDays||0)>=CLIENT.seuilSeniorJours?CLIENT.tarifWorkerSeniorJour:CLIENT.tarifWorkerJuniorJour;
     const inc=(w.incidents||[]).length;
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--white);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow);" onclick="openFiche(\''+w.id+'\')">' +
       '<div class="worker-av">'+w.name[0].toUpperCase()+'</div>' +
@@ -1149,13 +1231,13 @@ window.closeFiche = function() {
 function renderFicheDetail() {
   const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
   const entries=allEntries.filter(e=>e.workerId===currentFicheId);
-  const rate=(w.totalDays||0)>=7?250:220;
-  const isSenior=(w.totalDays||0)>=7||(w.customRate||0)>=250;
+  const rate=(w.totalDays||0)>=CLIENT.seuilSeniorJours?CLIENT.tarifWorkerSeniorJour:CLIENT.tarifWorkerJuniorJour;
+  const isSenior=(w.totalDays||0)>=CLIENT.seuilSeniorJours||(w.customRate||0)>=CLIENT.tarifWorkerSeniorJour;
   const incidents=w.incidents||[];
 
   document.getElementById('ficheAv').textContent=w.name[0].toUpperCase();
   document.getElementById('ficheName').textContent=w.name;
-  document.getElementById('ficheRateTxt').textContent='$'+rate+'/j · '+(isSenior?'Taux senior ✓':'Junior — '+(7-(w.totalDays||0))+'j avant $250');
+  document.getElementById('ficheRateTxt').textContent='$'+rate+'/j · '+(isSenior?'Taux senior ✓':'Junior — '+(CLIENT.seuilSeniorJours-(w.totalDays||0))+'j avant $'+CLIENT.tarifWorkerSeniorJour);
   document.getElementById('ficheDays').textContent=w.totalDays||0;
 
   document.getElementById('ficheEarned').textContent='$'+totalEarned(w).toLocaleString();
@@ -1187,6 +1269,12 @@ function renderFicheDetail() {
 
   // Cal
   renderFicheCal();
+
+  // Pointages
+  renderFichePointages();
+
+  // Paye
+  renderFichePaySummary();
 
   // Chantiers
   const countByAddr={};
@@ -1260,6 +1348,53 @@ window.resetPin = async function(){
   await setDoc(doc(db,'workers',currentFicheId),{pin:null},{merge:true});
   document.getElementById('fichePinDisplay').textContent='Réinitialisé';
   showToast('✅ PIN réinitialisé');
+};
+
+function renderFichePointages() {
+  const el=document.getElementById('fichePointagesList');
+  const entries=allEntries.filter(e=>e.workerId===currentFicheId);
+  const groups=groupEntriesByPersonDay(entries).sort((a,b)=>b.date.localeCompare(a.date));
+  if(!groups.length){el.innerHTML='<div style="color:var(--text-soft);font-size:12px;text-align:center;padding:10px;">Aucun pointage</div>';return;}
+  el.innerHTML=groups.map(g=>
+    '<div class="ptg-day-title" style="margin-top:8px;">'+new Date(g.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'short'})+'</div>' +
+    renderPersonRow(g)
+  ).join('');
+}
+
+function renderFichePaySummary() {
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const earned=totalEarned(w), paid=totalPaid(w), due=earned-paid;
+  document.getElementById('fichePaySummary').innerHTML =
+    '<div style="font-family:\'Cormorant Garamond\',serif;font-size:34px;font-weight:600;color:'+(due>0?'var(--forest)':'var(--success)')+';margin-bottom:4px;">$'+due.toLocaleString()+'</div>' +
+    '<div style="font-size:11px;color:var(--text-soft);">Solde dû · gagné $'+earned.toLocaleString()+' − payé $'+paid.toLocaleString()+'</div>';
+  const payments=[...(w.payments||[])].reverse();
+  document.getElementById('fichePayHistory').innerHTML = payments.length ? payments.map(p=>
+    '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--cream2);font-size:12px;">' +
+    '<div style="color:var(--text-mid);">'+p.date+(p.note?' · '+p.note:'')+'</div>' +
+    '<div style="font-weight:600;color:var(--forest);">$'+(p.amount||0).toLocaleString()+'</div></div>'
+  ).join('') : '<div style="color:var(--text-soft);font-size:12px;padding:8px 0;">Aucun paiement encore</div>';
+}
+
+window.toggleFichePayForm = function(){
+  const panel=document.getElementById('fichePayForm');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')){
+    const w=allWorkers.find(x=>x.id===currentFicheId);
+    const due=w?soldeDu(w):0;
+    document.getElementById('fichePayAmount').value = due>0?due:'';
+    document.getElementById('fichePayNote').value='';
+  }
+};
+
+window.addFichePayment = async function(){
+  const amount=parseFloat(document.getElementById('fichePayAmount').value);
+  const note=document.getElementById('fichePayNote').value.trim();
+  if(!amount||amount<=0){showToast('Entre un montant valide');return;}
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const payments=[...(w.payments||[]),{date:new Date().toLocaleDateString('fr-FR'),amount,note}];
+  await setDoc(doc(db,'workers',currentFicheId),{payments},{merge:true});
+  document.getElementById('fichePayForm').classList.remove('open');
+  showToast('✅ Paiement enregistré !');
 };
 
 // ── PAIEMENTS (ardoise cumulée) ──
@@ -1337,7 +1472,7 @@ async function geocodeNominatim(q) {
     if (!res.ok) return null;
     const data = await res.json();
     if (data && data[0]) return {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
-  } catch(e) {}
+  } catch(e) { logError('Géocodage Nominatim échoué : '+e.message, 'géocodage — requête: '+q); }
   return null;
 }
 
@@ -1349,7 +1484,7 @@ async function geocodePhoton(q) {
     const f = data && data.features && data.features[0];
     const coords = f && f.geometry && f.geometry.coordinates;
     if (coords) return {lat: coords[1], lng: coords[0]}; // GeoJSON = [lng, lat]
-  } catch(e) {}
+  } catch(e) { logError('Géocodage Photon échoué : '+e.message, 'géocodage — requête: '+q); }
   return null;
 }
 
@@ -1416,6 +1551,7 @@ window.createSlot = async function(){
       signups:[],createdAt:Date.now()
     });
   } catch(err) {
+    logError('Création créneau (slots) échouée : '+err.message, 'création créneau');
     alert('❌ La création du créneau a échoué : '+err.message+'\n\nRien n\'a été enregistré côté serveur — réessaie, et si ça persiste montre-moi ce message exact.');
     return;
   }
@@ -1424,6 +1560,7 @@ window.createSlot = async function(){
   } catch(err) {
     // Rollback : évite de laisser un créneau fantôme (sans adresse, non supprimable proprement)
     try { await deleteDoc(doc(db,'slots',slotId)); } catch(e2) {}
+    logError('Création créneau (slotAddresses) échouée : '+err.message, 'création créneau');
     alert('❌ La création du créneau a échoué : '+err.message+'\n\nRien n\'a été enregistré côté serveur — réessaie, et si ça persiste montre-moi ce message exact.');
     return;
   }
@@ -1705,6 +1842,26 @@ window.clearAllData = async function(){
   showToast('Non implémenté — supprime depuis la console Firebase');
 };
 
+function renderErrorLogs() {
+  const el=document.getElementById('errorLogList');
+  if(!el) return;
+  if(!allErrorLogs.length){el.innerHTML='<div style="color:var(--text-soft);font-size:12px;text-align:center;padding:10px;">Aucune anomalie enregistrée</div>';return;}
+  el.innerHTML=allErrorLogs.slice(0,100).map(log=>
+    '<div style="padding:10px 0;border-bottom:1px solid var(--cream2);">' +
+    '<div style="font-size:12px;color:var(--danger);font-weight:600;">'+(log.message||'Erreur inconnue')+'</div>' +
+    '<div style="font-size:11px;color:var(--text-mid);margin-top:2px;">'+(log.context||'')+'</div>' +
+    '<div style="font-size:10px;color:var(--text-soft);margin-top:3px;">'+(log.date||formatDate(new Date(log.timestamp||Date.now())))+'</div>' +
+    '<div style="font-size:9px;color:var(--text-soft);margin-top:2px;word-break:break-all;">'+(log.userAgent||'')+'</div>' +
+    '</div>'
+  ).join('');
+}
+
+window.clearErrorLogs = async function(){
+  if(!confirm('Vider le journal d\'anomalies ?')) return;
+  for(const log of allErrorLogs){ await deleteDoc(doc(db,'errorLogs',log.id)); }
+  showToast('🗑 Journal vidé');
+};
+
 // ── MANUAL ENTRY ──
 let manualType = 'start';
 
@@ -1812,6 +1969,7 @@ window.confirmManualEntry = async function() {
     document.getElementById('manualModal').classList.remove('open');
     showToast(matchedSlot ? '✅ Jour ajouté et lié au créneau du planning !' : '✅ Jour ajouté manuellement !');
   } catch(err) {
+    logError('Ajout pointage manuel échoué : '+err.message, 'ajout pointage manuel');
     showToast('❌ Erreur: ' + err.message);
     setSyncing(false);
   }
@@ -1825,10 +1983,10 @@ window.copyRecap = function(){
     const days=getWorkerWeekDays(w.id,dashWeekOff);
     const {sal,d220,d250}=computeSalary(w.id,days);
     const extra=w.extraAmount||0;
-    tb+=days.length*275; tp+=sal+extra;
+    tb+=bossTotal(days.length); tp+=sal+extra;
     txt+=w.name+': '+days.length+'j';
-    if(d220) txt+=' ('+d220+'×$220)';
-    if(d250) txt+=' ('+d250+'×$250)';
+    if(d220) txt+=' ('+d220+'×$'+CLIENT.tarifWorkerJuniorJour+')';
+    if(d250) txt+=' ('+d250+'×$'+CLIENT.tarifWorkerSeniorJour+')';
     if(extra) txt+=' + $'+extra;
     txt+=' = $'+(sal+extra)+'\n';
   });
@@ -1878,7 +2036,7 @@ window.exportPDF = function(){
       doc.text(dateStr, m+4, y);
       doc.text(addr, m+50, y);
       doc.setFont('helvetica','bold');doc.setTextColor(45,74,45);
-      doc.text('$275', 210-m-4, y, {align:'right'});
+      doc.text('$'+CLIENT.tarifClientJour, 210-m-4, y, {align:'right'});
       doc.setTextColor(180,180,180);
       doc.setLineWidth(0.3);
       doc.line(m,y+3,210-m,y+3);
@@ -1886,7 +2044,7 @@ window.exportPDF = function(){
     });
 
     // Worker subtotal
-    const workerTotal=days.length*275;
+    const workerTotal=days.length*CLIENT.tarifClientJour;
     totalDays+=days.length; grandTotal+=workerTotal;
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(45,74,45);
     doc.text('Sous-total '+w.name+' : '+days.length+' jour(s)', m+4, y);
@@ -1905,12 +2063,12 @@ window.exportPDF = function(){
   doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(80,80,80);
   doc.text('Total jours travaillés :', m+6, y+10);
   doc.setFont('helvetica','bold');doc.setTextColor(26,42,26);
-  doc.text(totalDays+' jours × $275 = $'+grandTotal.toLocaleString(), 210-m-4, y+10, {align:'right'});
+  doc.text(totalDays+' jours × $'+CLIENT.tarifClientJour+' = $'+grandTotal.toLocaleString(), 210-m-4, y+10, {align:'right'});
 
-  const commission=Math.round(grandTotal*0.10);
+  const commission=Math.round(grandTotal*(CLIENT.commissionAgencePct/100));
   const net=grandTotal+commission;
   doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(80,80,80);
-  doc.text('Commission agence (10%) :', m+6, y+22);
+  doc.text('Commission agence ('+CLIENT.commissionAgencePct+'%) :', m+6, y+22);
   doc.setFont('helvetica','bold');doc.setTextColor(26,42,26);
   doc.text('+ $'+commission.toLocaleString(), 210-m-4, y+22, {align:'right'});
 
