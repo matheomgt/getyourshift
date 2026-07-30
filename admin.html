@@ -1547,6 +1547,7 @@ window.createSlot = async function(){
   try {
     await setDoc(doc(db,'slots',slotId),{
       date,suburb,capacity,notes,workDescription,hours,
+      clientId:'paysagisme',
       suburbLat:null, suburbLng:null, geoStatus:'pending',
       signups:[],createdAt:Date.now()
     });
