@@ -80,6 +80,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 .comm-val{font-family:'Cormorant Garamond',serif;font-size:50px;font-weight:600;color:var(--cream);line-height:1;letter-spacing:-2px;position:relative;z-index:1;}
 .comm-dollar{font-size:22px;opacity:0.65;vertical-align:super;}
 .comm-sub{font-size:12px;color:rgba(244,241,235,0.55);margin-top:8px;position:relative;z-index:1;}
+.comm-extra{font-size:11px;color:var(--gold);margin-top:4px;position:relative;z-index:1;}
 
 /* BENTO */
 .bento2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
@@ -263,6 +264,22 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 /* TOAST */
 .toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--forest);color:var(--cream);padding:10px 18px;border-radius:24px;font-size:13px;opacity:0;transition:all 0.3s;z-index:999;white-space:nowrap;box-shadow:0 4px 16px rgba(45,74,45,0.3);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* DÉPASSEMENT FORFAIT JOUR */
+.overage-banner{position:fixed;top:0;left:0;right:0;background:rgba(26,42,26,0.75);backdrop-filter:blur(4px);z-index:400;display:none;justify-content:center;padding:0 0 20px;}
+.overage-banner.open{display:flex;}
+.overage-sheet{background:var(--cream);border-radius:0 0 24px 24px;padding:20px 20px 24px;width:100%;max-width:480px;transform:translateY(-100%);transition:transform 0.35s cubic-bezier(0.16,1,0.3,1);box-shadow:0 12px 32px rgba(26,42,26,0.3);}
+.overage-banner.open .overage-sheet{transform:translateY(0);}
+.overage-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--text-dark);margin-bottom:2px;}
+.overage-sub{font-size:12px;color:var(--text-soft);margin-bottom:16px;}
+.overage-row{margin-bottom:12px;}
+.overage-lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.03em;color:var(--text-soft);margin-bottom:6px;display:block;}
+.overage-margin{background:var(--cream2);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text-dark);display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.overage-margin b{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--forest);}
+.overage-alert{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);color:var(--gold);border-radius:12px;padding:10px 14px;font-size:12px;margin-bottom:8px;cursor:pointer;}
+.cal-cell.overage{position:relative;}
+.cal-cell.overage::after{content:'*';position:absolute;top:-1px;right:4px;color:var(--gold);font-weight:800;font-size:14px;}
+.worker-overage-mark{color:var(--gold);font-weight:800;margin-left:2px;}
 </style>
 </head>
 <body>
@@ -322,6 +339,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
   <!-- DASHBOARD -->
   <div class="tcontent active" id="tab-dashboard">
+    <div class="overage-alert" id="overageAlert" style="display:none;" onclick="openNextOverage()"></div>
     <div class="week-nav">
       <button class="wnav-btn" onclick="changeWeek(-1)">‹</button>
       <div class="wnav-lbl" id="dashWeekLbl"></div>
@@ -340,6 +358,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <div class="comm-lbl">Ta commission</div>
       <div class="comm-val"><span class="comm-dollar">$</span><span id="dashComm">0</span></div>
       <div class="comm-sub" id="dashCommSub"></div>
+      <div class="comm-extra" id="dashCommExtra" style="display:none;"></div>
     </div>
     <div class="bento2">
       <div class="bcard bcard-dark"><div class="blbl">Boss te donne</div><div class="bval"><span id="dashBoss">0</span><span class="bunit">$</span></div></div>
@@ -453,10 +472,13 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
         <div id="fichePaySummary"></div>
         <button class="btn btn-sage" onclick="toggleFichePayForm()" style="margin:10px 0 8px;">💳 Marquer un paiement</button>
         <div class="expand-panel" id="fichePayForm">
-          <label class="inp-lbl">Montant ($)</label>
-          <input class="inp" id="fichePayAmount" type="number" placeholder="0">
+          <label class="inp-lbl">Paye normale ($)</label>
+          <input class="inp" id="fichePayAmount" type="number" placeholder="0" oninput="updateFichePayPreview()">
+          <label class="inp-lbl">Extra ($) <span id="fichePayCagnotteHint" style="font-weight:400;text-transform:none;letter-spacing:0;"></span></label>
+          <input class="inp" id="fichePayExtra" type="number" placeholder="0" oninput="updateFichePayPreview()">
           <label class="inp-lbl">Note (optionnel)</label>
-          <input class="inp" id="fichePayNote" placeholder="ex: virement du 6 juillet">
+          <input class="inp" id="fichePayNote" placeholder="ex: virement du 6 juillet, 20$ pour la route">
+          <div class="overage-margin" id="fichePayPreview" style="margin-bottom:12px;"></div>
           <button class="btn btn-forest" onclick="addFichePayment()">✅ Enregistrer le paiement</button>
         </div>
         <div style="margin-top:12px;">
@@ -468,6 +490,39 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
         <div class="card-title">📝 Notes privées</div>
         <textarea class="note-area" id="ficheNotes" placeholder="Notes sur ce worker…" oninput="saveFicheNotes()"></textarea>
         <div style="font-size:10px;color:var(--text-soft);margin-top:4px;">Non visible par le worker</div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-title">🛠 Qualifications</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dark);margin-bottom:10px;cursor:pointer;">
+          <input type="checkbox" id="qualWhiteCard" onchange="toggleQualifBool('whiteCard')" style="width:16px;height:16px;">
+          White Card
+        </label>
+        <div id="qualWhiteCardExpiryRow" style="margin-bottom:14px;display:none;">
+          <label class="inp-lbl">Date d'expiration</label>
+          <input class="inp" id="qualWhiteCardExpiry" type="date" onchange="saveWhiteCardExpiry()">
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dark);margin-bottom:10px;cursor:pointer;">
+          <input type="checkbox" id="qualPermisVoiture" onchange="toggleQualifBool('permisVoiture')" style="width:16px;height:16px;">
+          Permis voiture
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dark);margin-bottom:14px;cursor:pointer;">
+          <input type="checkbox" id="qualPermisMoto" onchange="toggleQualifBool('permisMoto')" style="width:16px;height:16px;">
+          Permis moto
+        </label>
+
+        <label class="inp-lbl">Machines</label>
+        <div class="filter-pills" id="qualMachinesList" style="margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <input class="inp" id="qualMachineInput" placeholder="ex: mini-pelle" style="margin-bottom:0;">
+          <button class="btn btn-surface" style="white-space:nowrap;" onclick="addMachine()">+ Ajouter</button>
+        </div>
+
+        <label class="inp-lbl">Disponible pour (secteurs)</label>
+        <div class="filter-pills" id="qualSecteursList" style="margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input class="inp" id="qualSecteurInput" placeholder="ex: paysagisme" style="margin-bottom:0;">
+          <button class="btn btn-surface" style="white-space:nowrap;" onclick="addSecteur()">+ Ajouter</button>
+        </div>
       </div>
       <div class="card" style="margin-bottom:10px;">
         <div class="card-title">⚠️ Incidents</div>
@@ -552,6 +607,22 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
       <button class="btn btn-forest" onclick="saveAdminPin()">Enregistrer</button>
     </div>
     <div class="card" style="margin-top:10px;">
+      <div class="card-title">Qualifications requises — Paysagisme</div>
+      <div style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">Les workers qui ne les ont pas restent assignables mais seront marqués 🚫 dans le dispatch.</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dark);margin-bottom:10px;cursor:pointer;">
+        <input type="checkbox" id="reqWhiteCard" onchange="saveRequiredQuals()" style="width:16px;height:16px;">
+        White Card
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dark);margin-bottom:10px;cursor:pointer;">
+        <input type="checkbox" id="reqPermisVoiture" onchange="saveRequiredQuals()" style="width:16px;height:16px;">
+        Permis voiture
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dark);cursor:pointer;">
+        <input type="checkbox" id="reqPermisMoto" onchange="saveRequiredQuals()" style="width:16px;height:16px;">
+        Permis moto
+      </label>
+    </div>
+    <div class="card" style="margin-top:10px;">
       <div class="card-title">Données</div>
       <button class="btn btn-danger" onclick="clearAllData()">🗑 Effacer toutes les données</button>
     </div>
@@ -619,6 +690,36 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
     <div class="btn-row">
       <button class="btn btn-surface" onclick="document.getElementById('editModal').classList.remove('open')">Annuler</button>
       <button class="btn btn-forest" onclick="saveWorkerEdit()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- DÉPASSEMENT FORFAIT JOUR -->
+<div class="overage-banner" id="overageBanner">
+  <div class="overage-sheet">
+    <div class="overage-title">⏱ Dépassement détecté</div>
+    <div class="overage-sub" id="overageSub"></div>
+
+    <div class="overage-row">
+      <label class="overage-lbl">Pause déjeuner déduite (min)</label>
+      <input class="inp" type="number" id="ovLunch" min="0" step="5">
+    </div>
+    <div class="overage-row">
+      <label class="overage-lbl">Montant à demander au patron ($)</label>
+      <input class="inp" type="number" id="ovBossAmount" min="0" step="1">
+    </div>
+    <div class="overage-row">
+      <label class="overage-lbl">Montant à payer au worker ($)</label>
+      <input class="inp" type="number" id="ovWorkerAmount" min="0" step="1">
+    </div>
+    <div class="overage-margin">
+      <span>Marge dégagée</span>
+      <b id="ovMargin">$0</b>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-surface" onclick="dismissOverage()">Plus tard</button>
+      <button class="btn btn-forest" onclick="saveOverage()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -763,7 +864,8 @@ let CLIENT = {
   commissionAgencePct: 10,
   tarifWorkerJuniorJour: 220,
   tarifWorkerSeniorJour: 250,
-  seuilSeniorJours: 7
+  seuilSeniorJours: 7,
+  qualificationsRequises: []
 };
 async function loadClient() {
   try {
@@ -771,6 +873,40 @@ async function loadClient() {
     if (snap.exists()) CLIENT = {...CLIENT, ...snap.data()};
   } catch(e) { logError(e.message||e, 'loadClient'); }
 }
+
+// ── QUALIFICATIONS REQUISES (DISPATCH) ──
+function workerMeetsQualifications(w, requiredQuals) {
+  if (!requiredQuals || !requiredQuals.length) return true;
+  const q=w.qualifications||{};
+  return requiredQuals.every(r=>{
+    if(r==='whiteCard') return !!(q.whiteCard&&q.whiteCard.possede);
+    if(r==='permisVoiture') return !!q.permisVoiture;
+    if(r==='permisMoto') return !!q.permisMoto;
+    return (q.machines||[]).includes(r);
+  });
+}
+
+function renderRequiredQuals() {
+  const req=CLIENT.qualificationsRequises||[];
+  document.getElementById('reqWhiteCard').checked=req.includes('whiteCard');
+  document.getElementById('reqPermisVoiture').checked=req.includes('permisVoiture');
+  document.getElementById('reqPermisMoto').checked=req.includes('permisMoto');
+}
+
+window.saveRequiredQuals = async function(){
+  const req=[];
+  if(document.getElementById('reqWhiteCard').checked) req.push('whiteCard');
+  if(document.getElementById('reqPermisVoiture').checked) req.push('permisVoiture');
+  if(document.getElementById('reqPermisMoto').checked) req.push('permisMoto');
+  CLIENT.qualificationsRequises=req;
+  try {
+    await setDoc(doc(db,'clients','paysagisme'),{qualificationsRequises:req},{merge:true});
+    showToast('✅ Qualifications requises mises à jour');
+  } catch(err) {
+    logError('Sauvegarde qualifications requises échouée : '+err.message, 'saveRequiredQuals');
+    showToast('❌ Échec de la sauvegarde');
+  }
+};
 
 // ── INIT ADMIN ──
 async function initAdmin() {
@@ -795,6 +931,7 @@ async function initAdmin() {
     allEntries=[];
     snap.forEach(d=>allEntries.push({id:d.id,...d.data()}));
     refreshCurrentTab();
+    checkOverages();
     setSyncing(false);
   });
 
@@ -804,6 +941,7 @@ async function initAdmin() {
     snap.forEach(d=>allSlots.push({id:d.id,...d.data()}));
     allSlots.sort((a,b)=>a.date.localeCompare(b.date));
     refreshCurrentTab();
+    checkOverages();
     setSyncing(false);
   });
 
@@ -812,6 +950,7 @@ async function initAdmin() {
     allSlotAddresses={};
     snap.forEach(d=>allSlotAddresses[d.id]=d.data().address);
     refreshCurrentTab();
+    checkOverages();
     setSyncing(false);
   });
 
@@ -857,10 +996,10 @@ function renderTab(id) {
   else if(id==='workers') renderWorkers();
   else if(id==='pointages') renderPointages();
   else if(id==='galerie') renderGalerie();
-  else if(id==='fiches') renderFicheSelect();
+  else if(id==='fiches') { if(currentFicheId) renderFicheDetail(); else renderFicheSelect(); }
   else if(id==='paiements') renderPaiements();
   else if(id==='planning') renderPlanning();
-  else if(id==='settings') renderErrorLogs();
+  else if(id==='settings') { renderErrorLogs(); renderRequiredQuals(); }
 }
 
 // ── WEEK HELPERS ──
@@ -889,6 +1028,172 @@ function getWorkerWeekDays(wId, off) {
 // Montant total facturé au patron pour N jours : tarif de base + commission agence en sus
 function bossTotal(days) {
   return Math.round(days*CLIENT.tarifClientJour*(1+CLIENT.commissionAgencePct/100));
+}
+
+// ── MODE HORAIRE ──
+// Arrondi au quart d'heure le plus proche, appliqué par pointage (pas sur le total brut de la journée) :
+// 0-7min → arrondi au quart inférieur, 7-15min → arrondi au quart supérieur.
+function roundToQuarterHour(totalMinutes) {
+  const quarters = Math.floor(totalMinutes/15);
+  const remainder = totalMinutes-quarters*15;
+  return (remainder>=7 ? quarters+1 : quarters) * 15;
+}
+
+// Heures travaillées arrondies pour un pointage (clockIn/clockOut en timestamps ms)
+function hourlyRoundedHours(clockInMs, clockOutMs) {
+  const minutes = Math.max(0, (clockOutMs-clockInMs)/60000);
+  return roundToQuarterHour(minutes)/60;
+}
+
+// Taux horaire worker (junior/senior selon seuilSeniorJours du client) ; customRate reste prioritaire
+function hourlyWorkerRate(w, client) {
+  if (w.customRate) return w.customRate;
+  return (w.totalDays||0) >= client.seuilSeniorJours ? client.tarifWorkerSeniorHeure : client.tarifWorkerJuniorHeure;
+}
+
+// Montant facturé au patron pour N heures : tarif horaire client + commission recruteur en sus
+function hourlyBossTotal(hours, client) {
+  return Math.round(hours*client.tarifClientHeure*(1+client.commissionRecruteurPct/100)*100)/100;
+}
+
+// ── DÉPASSEMENT FORFAIT JOUR ──
+const DEFAULT_LUNCH_BREAK_MIN = 30;
+let overageQueue = [];
+let overageDismissed = new Set(); // "workerId_date" écartés pour cette session ("Plus tard")
+let currentOverageItem = null;
+
+// Parse "7h00 - 15h30" → 8.5 (heures). Retourne null si le format ne matche pas.
+function parseHoursRange(hoursStr) {
+  const m = (hoursStr||'').match(/(\d{1,2})h(\d{2})\s*-\s*(\d{1,2})h(\d{2})/);
+  if (!m) return null;
+  const startMin = (+m[1])*60+(+m[2]), endMin = (+m[3])*60+(+m[4]);
+  let diff = endMin-startMin;
+  if (diff<0) diff += 24*60;
+  return diff/60;
+}
+
+// Retrouve le créneau associé à un pointage : par slotId si présent (pointage manuel),
+// sinon par date+adresse (même heuristique que l'ajout manuel de pointage).
+function resolveSlotForEntry(entry) {
+  if (!entry) return null;
+  if (entry.slotId) {
+    const s = allSlots.find(x=>x.id===entry.slotId);
+    if (s) return s;
+  }
+  const slotsForDate = allSlots.filter(s=>s.date===entry.date);
+  if (slotsForDate.length===1) return slotsForDate[0];
+  if (slotsForDate.length>1) {
+    return slotsForDate.find(s=>(allSlotAddresses[s.id]||'').trim().toLowerCase()===(entry.address||'').trim().toLowerCase()) || null;
+  }
+  return null;
+}
+
+// Infos de dépassement pour un worker/jour donné, ou null si pas assez de données pour juger.
+function dayOverageInfo(workerId, date) {
+  const startEntry = allEntries.find(e=>e.workerId===workerId&&e.date===date&&e.type==='start');
+  const endEntry = allEntries.find(e=>e.workerId===workerId&&e.date===date&&e.type==='end');
+  if (!startEntry || !endEntry) return null;
+  const slot = resolveSlotForEntry(startEntry) || resolveSlotForEntry(endEntry);
+  const expectedHours = slot ? parseHoursRange(slot.hours) : null;
+  if (expectedHours==null) return null;
+  const existing = endEntry.overageAdjustment || null;
+  const lunchMin = existing && existing.lunchBreakMin!=null ? existing.lunchBreakMin : DEFAULT_LUNCH_BREAK_MIN;
+  const rawHours = (endEntry.timestamp-startEntry.timestamp)/3600000;
+  const actualHours = rawHours-lunchMin/60;
+  const overageHours = actualHours-expectedHours;
+  return {workerId, date, startEntry, endEntry, slot, expectedHours, lunchMin, rawHours, actualHours, overageHours, isOverage: overageHours>=1, resolved: !!existing};
+}
+
+// Balaie tous les pointages complets (start+end) et retourne les jours en dépassement non résolus.
+function findUnresolvedOverages() {
+  const pairs = new Set();
+  allEntries.forEach(e=>{ if(e.type==='start'||e.type==='end') pairs.add(e.workerId+'|'+e.date); });
+  const out = [];
+  pairs.forEach(key=>{
+    const [workerId,date] = key.split('|');
+    const info = dayOverageInfo(workerId,date);
+    if (info && info.isOverage && !info.resolved && !overageDismissed.has(workerId+'_'+date)) out.push(info);
+  });
+  out.sort((a,b)=>a.date.localeCompare(b.date));
+  return out;
+}
+
+// Recalcule la file d'attente des dépassements et met à jour le badge dashboard. Ouvre la
+// popup automatiquement pour le premier de la file si aucune n'est déjà ouverte.
+function checkOverages() {
+  overageQueue = findUnresolvedOverages();
+  const alertEl = document.getElementById('overageAlert');
+  if (!alertEl) return;
+  if (overageQueue.length) {
+    alertEl.style.display='block';
+    alertEl.textContent = '⚠️ '+overageQueue.length+' jour(s) en dépassement à traiter';
+  } else {
+    alertEl.style.display='none';
+  }
+  if (overageQueue.length && !currentOverageItem) openNextOverage();
+}
+
+window.openNextOverage = function(){
+  if (!overageQueue.length) { overageQueue = findUnresolvedOverages(); }
+  if (!overageQueue.length) return;
+  currentOverageItem = overageQueue[0];
+  const it = currentOverageItem;
+  const w = allWorkers.find(x=>x.id===it.workerId);
+  const normalRate = it.rawHours>=0 ? (w? (w.customRate||((w.totalDays||0)>=CLIENT.seuilSeniorJours?CLIENT.tarifWorkerSeniorJour:CLIENT.tarifWorkerJuniorJour)) : 0) : 0;
+  document.getElementById('overageSub').textContent =
+    (w?w.name:'Worker')+' · '+formatDate(it.date)+' · '+it.actualHours.toFixed(2)+'h travaillées (prévu '+it.expectedHours.toFixed(2)+'h)';
+  document.getElementById('ovLunch').value = it.lunchMin;
+  document.getElementById('ovBossAmount').value = bossTotal(1);
+  document.getElementById('ovWorkerAmount').value = normalRate;
+  updateOverageMargin();
+  document.getElementById('overageBanner').classList.add('open');
+};
+
+function updateOverageMargin(){
+  const boss = parseFloat(document.getElementById('ovBossAmount').value)||0;
+  const worker = parseFloat(document.getElementById('ovWorkerAmount').value)||0;
+  document.getElementById('ovMargin').textContent = '$'+(boss-worker).toLocaleString();
+}
+['ovBossAmount','ovWorkerAmount'].forEach(id=>{
+  document.addEventListener('input', e=>{ if(e.target && e.target.id===id) updateOverageMargin(); });
+});
+
+window.dismissOverage = function(){
+  if (currentOverageItem) overageDismissed.add(currentOverageItem.workerId+'_'+currentOverageItem.date);
+  document.getElementById('overageBanner').classList.remove('open');
+  currentOverageItem = null;
+  checkOverages();
+};
+
+window.saveOverage = async function(){
+  if (!currentOverageItem) return;
+  const it = currentOverageItem;
+  const lunchBreakMin = parseFloat(document.getElementById('ovLunch').value)||0;
+  const bossAmount = parseFloat(document.getElementById('ovBossAmount').value)||0;
+  const workerAmount = parseFloat(document.getElementById('ovWorkerAmount').value)||0;
+  const margin = bossAmount-workerAmount;
+  try {
+    await setDoc(doc(db,'entries',it.endEntry.id), {
+      overageAdjustment: { lunchBreakMin, bossAmount, workerAmount, margin, resolvedAt: Date.now() }
+    }, {merge:true});
+    showToast('✅ Dépassement enregistré');
+  } catch(err) {
+    logError('Enregistrement dépassement échoué : '+err.message, 'saveOverage');
+    showToast('❌ Échec de l\'enregistrement');
+    return;
+  }
+  document.getElementById('overageBanner').classList.remove('open');
+  currentOverageItem = null;
+  checkOverages();
+};
+
+// ── CAGNOTTE EXTRAS ──
+// Cumul mensuel des marges dégagées par les ajustements de dépassement (calculé à la volée
+// depuis les pointages déjà en base — pas de stockage séparé nécessaire).
+function monthlyExtrasTotal(monthKey) {
+  return allEntries
+    .filter(e=>e.type==='end' && e.overageAdjustment && (e.date||'').slice(0,7)===monthKey)
+    .reduce((s,e)=>s+(e.overageAdjustment.margin||0),0);
 }
 
 function computeSalary(wId, daysArr) {
@@ -961,6 +1266,15 @@ function renderDashboard() {
   document.getElementById('dashPaid').textContent=totalPaid.toLocaleString();
   document.getElementById('dashCommSub').textContent='Boss: $'+totalBoss+' · Payé: $'+totalPaid;
   document.getElementById('dashRows').innerHTML=rowsHtml||'<div style="color:var(--text-soft);font-size:13px;padding:12px 0;text-align:center;">Aucun pointage cette semaine</div>';
+
+  const extraEl=document.getElementById('dashCommExtra');
+  const extras=monthlyExtrasTotal(monthStr(Date.now()));
+  if(extras>0){
+    extraEl.style.display='block';
+    extraEl.textContent='extra (mois) : '+comm.toLocaleString()+'+'+extras.toLocaleString()+'='+(comm+extras).toLocaleString()+'$';
+  } else {
+    extraEl.style.display='none';
+  }
 }
 
 // ── WORKERS ──
@@ -998,8 +1312,9 @@ function renderWorkers() {
       '<div class="prog-row"><span class="prog-lbl">Cette semaine</span><span class="prog-val">'+days.length+'/5j · $'+sal+'</span></div>' +
       '<div class="prog-track"><div class="prog-fill prog-green" style="width:'+Math.min(days.length/5*100,100)+'%"></div></div>' +
       (w.extraAmount?'<div style="font-size:11px;color:var(--gold);margin:4px 0 8px;">✨ Extra: +$'+w.extraAmount+(w.extraNote?' ('+w.extraNote+')':'')+'</div>':'') +
-      '<div class="btn-row"><button class="btn btn-surface" onclick="openEditWorker(\''+w.id+'\')">✏️ Modifier</button>' +
-      '<button class="btn btn-danger" onclick="deleteWorker(\''+w.id+'\')">✕ Supprimer</button></div></div>';
+      '<div class="btn-row"><button class="btn btn-sage" onclick="openWorkerFiche(\''+w.id+'\')">📋 Voir la fiche</button>' +
+      '<button class="btn btn-surface" onclick="openEditWorker(\''+w.id+'\')">✏️ Modifier</button></div>' +
+      '<div class="btn-row"><button class="btn btn-danger" onclick="deleteWorker(\''+w.id+'\')">✕ Supprimer</button></div></div>';
   }).join('');
 }
 
@@ -1222,7 +1537,13 @@ window.openFiche = function(wId) {
   renderFicheDetail();
 };
 
+window.openWorkerFiche = function(wId) {
+  showTab('fiches');
+  openFiche(wId);
+};
+
 window.closeFiche = function() {
+  currentFicheId=null;
   document.getElementById('ficheDetailView').style.display='none';
   document.getElementById('ficheSelectView').style.display='block';
   renderFicheSelect();
@@ -1284,7 +1605,92 @@ function renderFicheDetail() {
   else cl.innerHTML=addrs.map(a=>'<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--cream2);"><div style="font-size:12px;color:var(--text-dark);flex:1;">'+a+'</div><div style="font-size:11px;color:var(--sage);font-weight:500;">'+(countByAddr[a]||1)+'j</div></div>').join('');
 
   renderIncidents();
+
+  // Qualifications
+  renderFicheQualifications();
 }
+
+// ── QUALIFICATIONS ──
+function renderFicheQualifications() {
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const q=w.qualifications||{};
+  const wc=q.whiteCard||{};
+  document.getElementById('qualWhiteCard').checked=!!wc.possede;
+  document.getElementById('qualWhiteCardExpiryRow').style.display=wc.possede?'block':'none';
+  document.getElementById('qualWhiteCardExpiry').value=wc.dateExpiration||'';
+  document.getElementById('qualPermisVoiture').checked=!!q.permisVoiture;
+  document.getElementById('qualPermisMoto').checked=!!q.permisMoto;
+
+  const machines=q.machines||[];
+  document.getElementById('qualMachinesList').innerHTML = machines.length
+    ? machines.map((m,i)=>'<div class="filter-pill">'+m+' <span onclick="removeMachine('+i+')" style="cursor:pointer;font-weight:700;margin-left:4px;">✕</span></div>').join('')
+    : '<div style="font-size:11px;color:var(--text-soft);">Aucune machine renseignée</div>';
+
+  const secteurs=w.disponiblePour||[];
+  document.getElementById('qualSecteursList').innerHTML = secteurs.length
+    ? secteurs.map((s,i)=>'<div class="filter-pill">'+s+' <span onclick="removeSecteur('+i+')" style="cursor:pointer;font-weight:700;margin-left:4px;">✕</span></div>').join('')
+    : '<div style="font-size:11px;color:var(--text-soft);">Aucun secteur renseigné</div>';
+}
+
+window.toggleQualifBool = async function(field){
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const q={...(w.qualifications||{})};
+  if (field==='whiteCard') {
+    const possede=document.getElementById('qualWhiteCard').checked;
+    q.whiteCard={possede, dateExpiration: possede ? (q.whiteCard&&q.whiteCard.dateExpiration||null) : null};
+  } else {
+    q[field]=document.getElementById(field==='permisVoiture'?'qualPermisVoiture':'qualPermisMoto').checked;
+  }
+  await setDoc(doc(db,'workers',currentFicheId),{qualifications:q},{merge:true});
+  document.getElementById('qualWhiteCardExpiryRow').style.display=q.whiteCard&&q.whiteCard.possede?'block':'none';
+};
+
+window.saveWhiteCardExpiry = async function(){
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const q={...(w.qualifications||{})};
+  q.whiteCard={possede: q.whiteCard?!!q.whiteCard.possede:false, dateExpiration: document.getElementById('qualWhiteCardExpiry').value||null};
+  await setDoc(doc(db,'workers',currentFicheId),{qualifications:q},{merge:true});
+};
+
+window.addMachine = async function(){
+  const input=document.getElementById('qualMachineInput');
+  const val=input.value.trim();
+  if(!val) return;
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const q={...(w.qualifications||{})};
+  const machines=[...(q.machines||[])];
+  if(!machines.includes(val)) machines.push(val);
+  q.machines=machines;
+  await setDoc(doc(db,'workers',currentFicheId),{qualifications:q},{merge:true});
+  input.value='';
+};
+
+window.removeMachine = async function(idx){
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const q={...(w.qualifications||{})};
+  const machines=[...(q.machines||[])];
+  machines.splice(idx,1);
+  q.machines=machines;
+  await setDoc(doc(db,'workers',currentFicheId),{qualifications:q},{merge:true});
+};
+
+window.addSecteur = async function(){
+  const input=document.getElementById('qualSecteurInput');
+  const val=input.value.trim();
+  if(!val) return;
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const secteurs=[...(w.disponiblePour||[])];
+  if(!secteurs.includes(val)) secteurs.push(val);
+  await setDoc(doc(db,'workers',currentFicheId),{disponiblePour:secteurs},{merge:true});
+  input.value='';
+};
+
+window.removeSecteur = async function(idx){
+  const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
+  const secteurs=[...(w.disponiblePour||[])];
+  secteurs.splice(idx,1);
+  await setDoc(doc(db,'workers',currentFicheId),{disponiblePour:secteurs},{merge:true});
+};
 
 window.ficheCalMonth = function(d){ficheCalOff+=d;renderFicheCal();};
 
@@ -1305,9 +1711,11 @@ function renderFicheCal() {
   for(let d=1;d<=daysInMonth;d++){
     const ds=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const isT=ds===todayS, isW=worked.has(ds);
+    const ovInfo=isW?dayOverageInfo(currentFicheId,ds):null;
     let cls='cal-cell';
     if(isT&&isW) cls+=' worked'; else if(isT) cls+=' today'; else if(isW) cls+=' worked';
-    html+='<div class="'+cls+'">'+d+'</div>';
+    if(ovInfo&&ovInfo.isOverage) cls+=' overage';
+    html+='<div class="'+cls+'" title="'+(ovInfo&&ovInfo.isOverage?'Dépassement forfait jour':'')+'">'+d+'</div>';
   }
   document.getElementById('ficheCalGrid').innerHTML=html;
 }
@@ -1382,12 +1790,27 @@ window.toggleFichePayForm = function(){
     const w=allWorkers.find(x=>x.id===currentFicheId);
     const due=w?soldeDu(w):0;
     document.getElementById('fichePayAmount').value = due>0?due:'';
+    document.getElementById('fichePayExtra').value='';
     document.getElementById('fichePayNote').value='';
+    const cagnotte=monthlyExtrasTotal(monthStr(Date.now()));
+    document.getElementById('fichePayCagnotteHint').innerHTML = cagnotte>0
+      ? '· <a href="#" onclick="event.preventDefault();document.getElementById(\'fichePayExtra\').value='+cagnotte+';updateFichePayPreview();">cagnotte dispo : $'+cagnotte.toLocaleString()+'</a>'
+      : '';
+    updateFichePayPreview();
   }
 };
 
+window.updateFichePayPreview = function(){
+  const base=parseFloat(document.getElementById('fichePayAmount').value)||0;
+  const extra=parseFloat(document.getElementById('fichePayExtra').value)||0;
+  document.getElementById('fichePayPreview').innerHTML =
+    '<span>Paye normale : $'+base.toLocaleString()+(extra?' · extra : +$'+extra.toLocaleString():'')+'</span><b>Total $'+(base+extra).toLocaleString()+'</b>';
+};
+
 window.addFichePayment = async function(){
-  const amount=parseFloat(document.getElementById('fichePayAmount').value);
+  const base=parseFloat(document.getElementById('fichePayAmount').value)||0;
+  const extra=parseFloat(document.getElementById('fichePayExtra').value)||0;
+  const amount=base+extra;
   const note=document.getElementById('fichePayNote').value.trim();
   if(!amount||amount<=0){showToast('Entre un montant valide');return;}
   const w=allWorkers.find(x=>x.id===currentFicheId); if(!w) return;
@@ -1671,14 +2094,22 @@ function renderPlanDayDetail(pending) {
     const signups=s.signups||[];
     const pendingForSlot=pending.filter(r=>r.slotId===s.id).map(r=>r.workerId);
     const chipsHtml = signups.length
-      ? signups.map(su=>'<span class="plan-worker-chip'+(pendingForSlot.includes(su.workerId)?' pending':'')+'">👷 '+su.workerName+(pendingForSlot.includes(su.workerId)?' ⏳':'')+
-          ' <span onclick="removeWorkerFromSlot(\''+s.id+'\',\''+su.workerId+'\')" title="Retirer du créneau" style="cursor:pointer;font-weight:700;margin-left:4px;color:var(--danger);">✕</span></span>').join('')
+      ? signups.map(su=>{
+          const ovInfo=dayOverageInfo(su.workerId,s.date);
+          const ovMark=(ovInfo&&ovInfo.isOverage)?'<span class="worker-overage-mark" title="Dépassement forfait jour">*</span>':'';
+          return '<span class="plan-worker-chip'+(pendingForSlot.includes(su.workerId)?' pending':'')+'">👷 '+su.workerName+ovMark+(pendingForSlot.includes(su.workerId)?' ⏳':'')+
+          ' <span onclick="removeWorkerFromSlot(\''+s.id+'\',\''+su.workerId+'\')" title="Retirer du créneau" style="cursor:pointer;font-weight:700;margin-left:4px;color:var(--danger);">✕</span></span>';
+        }).join('')
       : '<div style="font-size:12px;color:var(--text-soft);">Personne inscrit</div>';
     const fullAddr = allSlotAddresses[s.id] || s.suburb || '';
     const full = signups.length>=s.capacity;
     const availableWorkers = allWorkers.filter(w=>!signups.some(su=>su.workerId===w.id));
+    const requiredQuals = CLIENT.qualificationsRequises||[];
     const addWorkerOptions = availableWorkers.length
-      ? '<option value="">Choisir un worker…</option>'+availableWorkers.map(w=>'<option value="'+w.id+'">'+w.name+'</option>').join('')
+      ? '<option value="">Choisir un worker…</option>'+availableWorkers.map(w=>{
+          const mark = requiredQuals.length ? (workerMeetsQualifications(w,requiredQuals)?'✅ ':'🚫 ') : '';
+          return '<option value="'+w.id+'">'+mark+w.name+'</option>';
+        }).join('')
       : '<option value="">Tous les workers sont déjà inscrits</option>';
     return '<div class="plan-detail-card">' +
       '<div class="plan-detail-top">' +
