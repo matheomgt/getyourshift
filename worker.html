@@ -775,6 +775,9 @@ let cancelingSlotId = null;
 let addrCache = {}; // fetched on-demand, only for slots the worker is confirmed on
 let addrUnsubs = {}; // slotId -> live listener, so admin edits reach an already-open session
 let openSlotDetailId = null; // slotId currently shown in the detail modal, for live refresh
+let allSlotAddresses = {}; // toutes les adresses (nécessaire pour résoudre le client d'un pointage)
+let allClients = {};
+let unsubSlotAddresses = null, unsubClients = null;
 
 // URL du Web App Apps Script déployé depuis google-apps-script/Code.gs (fonction doPost).
 // Tant qu'elle n'est pas renseignée, l'email "X/Y workers on site" est silencieusement ignoré.
@@ -814,21 +817,66 @@ function setSyncing(on) {
   else { dot.classList.remove('syncing'); txt.textContent = 'Synchronisé ✓'; }
 }
 
-// ── CLIENT (règles de paye) ──
-// Client unique pour l'instant (Paysagisme). Valeurs de repli = comportement historique en dur,
-// utilisées seulement si le doc Firestore est introuvable.
-let CLIENT = {
+// ── CLIENTS (multi-entreprises, règles de paye) ──
+const CLIENT_FALLBACK = {
+  id: 'paysagisme',
+  nom: 'Paysagisme',
+  modeCalcul: 'forfait',
   tarifClientJour: 275,
   commissionAgencePct: 10,
   tarifWorkerJuniorJour: 220,
   tarifWorkerSeniorJour: 250,
-  seuilSeniorJours: 7
+  seuilSeniorJours: 7,
+  comptePourAnciennete: true
 };
+let CLIENT = {...CLIENT_FALLBACK};
+
+function getClient(clientId) {
+  return allClients[clientId] || {...CLIENT_FALLBACK, id: clientId};
+}
+
 async function loadClient() {
   try {
     const snap = await getDoc(doc(db,'clients','paysagisme'));
-    if (snap.exists()) CLIENT = {...CLIENT, ...snap.data()};
+    if (snap.exists()) CLIENT = {...CLIENT_FALLBACK, ...snap.data(), id:'paysagisme'};
   } catch(e) { logError(e.message||e, 'loadClient'); }
+}
+
+// Retrouve le créneau associé à un pointage : par slotId si présent, sinon par date+adresse
+// (même heuristique que côté admin).
+function resolveSlotForEntry(entry) {
+  if (!entry) return null;
+  if (entry.slotId) {
+    const s = allSlots.find(x=>x.id===entry.slotId);
+    if (s) return s;
+  }
+  const slotsForDate = allSlots.filter(s=>s.date===entry.date);
+  if (slotsForDate.length===1) return slotsForDate[0];
+  if (slotsForDate.length>1) {
+    return slotsForDate.find(s=>(allSlotAddresses[s.id]||'').trim().toLowerCase()===(entry.address||'').trim().toLowerCase()) || null;
+  }
+  return null;
+}
+
+function resolveClientIdForEntry(entry) {
+  const slot = resolveSlotForEntry(entry);
+  return (slot && slot.clientId) || 'paysagisme';
+}
+
+// Client "par défaut" du worker courant pour l'affichage : celui de son pointage le plus récent.
+function resolveWorkerDefaultClient(w) {
+  const starts = allEntries.filter(e=>e.workerId===w.id && e.type==='start').sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+  if (starts.length) return getClient(resolveClientIdForEntry(starts[0]));
+  return getClient('paysagisme');
+}
+
+function workerSeniorityDayCount(w, client) {
+  return client.comptePourAnciennete ? (w.totalDays||0) : ((w.totalDaysByClient||{})[client.id]||0);
+}
+
+function isWorkerSeniorForClient(w, client) {
+  const seniorRate = client.tarifWorkerSeniorJour!=null ? client.tarifWorkerSeniorJour : client.tarifWorkerSeniorHeure;
+  return workerSeniorityDayCount(w,client) >= client.seuilSeniorJours || (seniorRate!=null && (w.customRate||0) >= seniorRate);
 }
 
 // ── LOAD WORKERS FROM FIREBASE ──
@@ -847,6 +895,7 @@ function renderWorkerGrid() {
     return;
   }
   grid.innerHTML = allWorkers.map((w, i) => {
+    // Repli sur Paysagisme ici : les pointages des autres workers ne sont pas chargés avant connexion.
     const isSenior = (w.totalDays||0) >= CLIENT.seuilSeniorJours || (w.customRate||0) >= CLIENT.tarifWorkerSeniorJour;
     const badge = isSenior ? 'Senior ⭐' : 'Junior';
     const badgeColor = isSenior ? '#c9a84c' : '#7a9e7a';
@@ -979,6 +1028,8 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   if (unsubEntries) { unsubEntries(); unsubEntries = null; }
   if (unsubSlots) { unsubSlots(); unsubSlots = null; }
   if (unsubMyCancelReqs) { unsubMyCancelReqs(); unsubMyCancelReqs = null; }
+  if (unsubSlotAddresses) { unsubSlotAddresses(); unsubSlotAddresses = null; }
+  if (unsubClients) { unsubClients(); unsubClients = null; }
   currentWorker = null;
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('pinScreen').style.display = 'flex';
@@ -1024,6 +1075,24 @@ function initApp() {
     renderDispos();
     setSyncing(false);
   });
+
+  // Live listener on slot addresses (nécessaire pour résoudre le client d'un pointage)
+  if (unsubSlotAddresses) unsubSlotAddresses();
+  unsubSlotAddresses = onSnapshot(collection(db, 'slotAddresses'), snap => {
+    allSlotAddresses = {};
+    snap.forEach(d => allSlotAddresses[d.id] = d.data().address);
+    setSyncing(false);
+  });
+
+  // Live listener on clients
+  if (unsubClients) unsubClients();
+  unsubClients = onSnapshot(collection(db, 'clients'), snap => {
+    allClients = {};
+    snap.forEach(d => allClients[d.id] = {...CLIENT_FALLBACK, ...d.data(), id: d.id});
+    CLIENT = allClients['paysagisme'] || CLIENT;
+    renderAll();
+    setSyncing(false);
+  });
 }
 
 // ── RENDER ALL TABS ──
@@ -1040,21 +1109,44 @@ function getWeekEntries(offset) {
   return [...new Set(week.map(en=>en.date))].sort();
 }
 
-function computeSalary(daysCount) {
+function computeSalary(daysCount, client) {
+  client = client || CLIENT;
   if (currentWorker.customRate) return {sal: currentWorker.customRate*daysCount, d220:0, d250:daysCount};
-  const totalBefore = (currentWorker.totalDays||0) - daysCount;
+  const counter = workerSeniorityDayCount(currentWorker, client);
+  const totalBefore = counter - daysCount;
   let sal=0, d220=0, d250=0;
   for (let i=0; i<daysCount; i++) {
-    if (totalBefore+i < CLIENT.seuilSeniorJours) { sal+=CLIENT.tarifWorkerJuniorJour; d220++; } else { sal+=CLIENT.tarifWorkerSeniorJour; d250++; }
+    if (totalBefore+i < client.seuilSeniorJours) { sal+=client.tarifWorkerJuniorJour; d220++; } else { sal+=client.tarifWorkerSeniorJour; d250++; }
   }
   return {sal, d220, d250};
 }
 
-// Solde dû (ardoise) — jours travaillés depuis toujours × taux, indépendant du calcul de commission
+// Jours travaillés par ce worker, groupés par client (basé sur ses pointages 'start' déjà chargés).
+function workerDaysByClient() {
+  const counts = {};
+  allEntries.filter(e=>e.type==='start').forEach(e=>{
+    const cid = resolveClientIdForEntry(e);
+    counts[cid] = (counts[cid]||0)+1;
+  });
+  return counts;
+}
+
+// Solde dû (ardoise) — jours travaillés depuis toujours × taux (tous clients confondus, chacun à
+// son propre tarif), indépendant du calcul de commission.
 function totalEarned(w) {
-  const days = w.totalDays||0;
-  const base = w.customRate ? days*w.customRate : (()=>{let s=0;for(let i=0;i<days;i++)s+=(i<CLIENT.seuilSeniorJours?CLIENT.tarifWorkerJuniorJour:CLIENT.tarifWorkerSeniorJour);return s;})();
-  return base+(w.extraAmount||0);
+  if (w.customRate) return (w.totalDays||0)*w.customRate + (w.extraAmount||0);
+  const byClient = workerDaysByClient();
+  let sum=0, sharedIdx=0;
+  Object.keys(byClient).forEach(cid=>{
+    const c = getClient(cid);
+    const days = byClient[cid];
+    if (c.comptePourAnciennete) {
+      for(let i=0;i<days;i++){ sum += (sharedIdx<c.seuilSeniorJours?c.tarifWorkerJuniorJour:c.tarifWorkerSeniorJour); sharedIdx++; }
+    } else {
+      for(let i=0;i<days;i++){ sum += (i<c.seuilSeniorJours?c.tarifWorkerJuniorJour:c.tarifWorkerSeniorJour); }
+    }
+  });
+  return sum+(w.extraAmount||0);
 }
 function totalPaidAmount(w) {
   return (w.payments||[]).reduce((s,p)=>s+(p.amount||0),0);
@@ -1065,21 +1157,25 @@ function soldeDu(w) {
 
 // ── HOME ──
 function renderHome() {
-  const totalDays = currentWorker.totalDays||0;
-  const seuil = CLIENT.seuilSeniorJours;
-  const rate = currentWorker.customRate || (totalDays >= seuil ? CLIENT.tarifWorkerSeniorJour : CLIENT.tarifWorkerJuniorJour);
+  // Écran pensé pour un client en mode forfait ; repli sur Paysagisme si le client par défaut
+  // du worker est en mode horaire (UI horaire pas encore construite côté worker).
+  let client = resolveWorkerDefaultClient(currentWorker);
+  if (client.modeCalcul!=='forfait') client = CLIENT;
+  const totalDays = workerSeniorityDayCount(currentWorker, client);
+  const seuil = client.seuilSeniorJours;
+  const rate = currentWorker.customRate || (totalDays >= seuil ? client.tarifWorkerSeniorJour : client.tarifWorkerJuniorJour);
   const daysToUnlock = Math.max(0, seuil-totalDays);
   const weekDays = getWeekEntries(0);
   const weekCount = weekDays.length;
   const weekPct = Math.min(Math.round(weekCount/5*100),999);
-  const {sal} = computeSalary(weekCount);
-  const {sal:salPlus} = computeSalary(weekCount+1);
-  const salMax = rate===CLIENT.tarifWorkerSeniorJour ? CLIENT.tarifWorkerSeniorJour*5 : (Math.min(daysToUnlock,5)*CLIENT.tarifWorkerJuniorJour+Math.max(0,5-daysToUnlock)*CLIENT.tarifWorkerSeniorJour);
+  const {sal} = computeSalary(weekCount, client);
+  const {sal:salPlus} = computeSalary(weekCount+1, client);
+  const salMax = rate===client.tarifWorkerSeniorJour ? client.tarifWorkerSeniorJour*5 : (Math.min(daysToUnlock,5)*client.tarifWorkerJuniorJour+Math.max(0,5-daysToUnlock)*client.tarifWorkerSeniorJour);
 
   document.getElementById('bWeekDays').textContent = weekCount;
   document.getElementById('bWeekPct').textContent = Math.min(weekPct,100)+'%';
   document.getElementById('bRate').textContent = '$'+rate;
-  document.getElementById('bRateNote').textContent = rate===CLIENT.tarifWorkerJuniorJour ? '+$'+(CLIENT.tarifWorkerSeniorJour-CLIENT.tarifWorkerJuniorJour)+'/j dans '+daysToUnlock+'j' : '✓ Taux senior';
+  document.getElementById('bRateNote').textContent = rate===client.tarifWorkerJuniorJour ? '+$'+(client.tarifWorkerSeniorJour-client.tarifWorkerJuniorJour)+'/j dans '+daysToUnlock+'j' : '✓ Taux senior';
   setTimeout(() => { document.getElementById('bWeekBar').style.width = Math.min(weekCount/5*100,100)+'%'; }, 200);
 
   document.getElementById('salaryCurrent').textContent = sal.toLocaleString();
@@ -1088,10 +1184,10 @@ function renderHome() {
   setTimeout(() => { document.getElementById('salaryBar').style.width = (salMax>0 ? sal/salMax*100 : 0)+'%'; }, 300);
 
   // Unlock
-  document.getElementById('unlockBadge').textContent = rate===CLIENT.tarifWorkerSeniorJour ? '✓ SENIOR' : 'J'+(Math.min(totalDays,seuil-1)+1)+'/'+seuil;
-  document.getElementById('unlockBadge').className = 'unlock-badge'+(rate===CLIENT.tarifWorkerSeniorJour?' senior':'');
-  document.getElementById('unlockSub').textContent = rate===CLIENT.tarifWorkerSeniorJour ? 'Tu es au taux maximum !' : 'Plus que '+daysToUnlock+' jour(s) pour $'+CLIENT.tarifWorkerSeniorJour;
-  document.getElementById('unlockCta').innerHTML = rate===CLIENT.tarifWorkerSeniorJour ? 'Tu es au <strong>taux senior $'+CLIENT.tarifWorkerSeniorJour+'</strong> 🏆' : 'Il te reste <strong>'+daysToUnlock+' jour(s)</strong> à faire';
+  document.getElementById('unlockBadge').textContent = rate===client.tarifWorkerSeniorJour ? '✓ SENIOR' : 'J'+(Math.min(totalDays,seuil-1)+1)+'/'+seuil;
+  document.getElementById('unlockBadge').className = 'unlock-badge'+(rate===client.tarifWorkerSeniorJour?' senior':'');
+  document.getElementById('unlockSub').textContent = rate===client.tarifWorkerSeniorJour ? 'Tu es au taux maximum !' : 'Plus que '+daysToUnlock+' jour(s) pour $'+client.tarifWorkerSeniorJour;
+  document.getElementById('unlockCta').innerHTML = rate===client.tarifWorkerSeniorJour ? 'Tu es au <strong>taux senior $'+client.tarifWorkerSeniorJour+'</strong> 🏆' : 'Il te reste <strong>'+daysToUnlock+' jour(s)</strong> à faire';
 
   let dotsHtml = '';
   for (let i=0; i<seuil; i++) {
@@ -1435,12 +1531,14 @@ window.submitLateCancel = async function() {
 
 // ── RECAP ──
 function renderRecap() {
+  let client = resolveWorkerDefaultClient(currentWorker);
+  if (client.modeCalcul!=='forfait') client = CLIENT;
   const weekDays = getWeekEntries(0);
-  const {sal} = computeSalary(weekDays.length);
+  const {sal} = computeSalary(weekDays.length, client);
   document.getElementById('recapTotal').textContent = sal.toLocaleString();
 
   // Day detail
-  const totalBefore = (currentWorker.totalDays||0)-weekDays.length;
+  const totalBefore = workerSeniorityDayCount(currentWorker, client)-weekDays.length;
   const daysList = document.getElementById('recapDaysList');
   if (!weekDays.length) { daysList.innerHTML = '<div style="color:var(--text-soft);font-size:13px;text-align:center;padding:12px;">Aucun jour cette semaine</div>'; }
   else {
@@ -1448,7 +1546,7 @@ function renderRecap() {
     const byDay = {};
     wkEntries.forEach(e => { if(!byDay[e.date]) byDay[e.date]=[]; byDay[e.date].push(e); });
     daysList.innerHTML = weekDays.map((d,i) => {
-      const rate = currentWorker.customRate || ((totalBefore+i)<CLIENT.seuilSeniorJours ? CLIENT.tarifWorkerJuniorJour : CLIENT.tarifWorkerSeniorJour);
+      const rate = currentWorker.customRate || ((totalBefore+i)<client.seuilSeniorJours ? client.tarifWorkerJuniorJour : client.tarifWorkerSeniorJour);
       const addr = byDay[d]&&byDay[d][0] ? byDay[d][0].address : '—';
       return '<div class="recap-day"><div class="recap-day-date">'+formatDate(d)+'</div><div class="recap-day-addr">'+addr+'</div><div class="recap-day-amt r'+rate+'">$'+rate+'</div></div>';
     }).join('');
@@ -1471,11 +1569,13 @@ function renderRecap() {
 
 // ── PROFIL ──
 function renderProfil() {
-  const totalDays = currentWorker.totalDays||0;
-  const rate = currentWorker.customRate || (totalDays>=CLIENT.seuilSeniorJours?CLIENT.tarifWorkerSeniorJour:CLIENT.tarifWorkerJuniorJour);
+  let client = resolveWorkerDefaultClient(currentWorker);
+  if (client.modeCalcul!=='forfait') client = CLIENT;
+  const totalDays = workerSeniorityDayCount(currentWorker, client);
+  const rate = currentWorker.customRate || (totalDays>=client.seuilSeniorJours?client.tarifWorkerSeniorJour:client.tarifWorkerJuniorJour);
   document.getElementById('profAvatar').textContent = currentWorker.name[0].toUpperCase();
   document.getElementById('profName').textContent = currentWorker.name;
-  document.getElementById('profRate').textContent = '$'+rate+'/jour · '+(rate===CLIENT.tarifWorkerJuniorJour?'Taux junior':'Taux senior ✓');
+  document.getElementById('profRate').textContent = client.nom+' · $'+rate+'/jour · '+(rate===client.tarifWorkerJuniorJour?'Taux junior':'Taux senior ✓');
   document.getElementById('profDays').textContent = totalDays;
   document.getElementById('profEarned').textContent = '$'+totalEarned(currentWorker).toLocaleString();
   const addrs = [...new Set(allEntries.filter(e=>e.address).map(e=>e.address))];
@@ -1676,14 +1776,18 @@ window.confirmPointage = async function() {
 
   try {
     await setDoc(doc(db, 'entries', entryId), entry);
-    // If start — increment totalDays
+    // If start — increment totalDays (+ compteur par client)
     if (currentModalType==='start') {
-      const newTotal = (currentWorker.totalDays||0)+1;
-      await setDoc(doc(db,'workers',currentWorker.id), {totalDays:newTotal}, {merge:true});
-      currentWorker.totalDays = newTotal;
+      const client = getClient(resolveClientIdForEntry(entry));
+      const byClient = {...(currentWorker.totalDaysByClient||{})};
+      byClient[client.id] = (byClient[client.id]||0)+1;
+      const patch = {totalDaysByClient: byClient};
+      if (client.comptePourAnciennete) patch.totalDays = (currentWorker.totalDays||0)+1;
+      await setDoc(doc(db,'workers',currentWorker.id), patch, {merge:true});
+      Object.assign(currentWorker, patch);
       // Update allWorkers too
       const wi = allWorkers.findIndex(w=>w.id===currentWorker.id);
-      if(wi>=0) allWorkers[wi].totalDays = newTotal;
+      if(wi>=0) Object.assign(allWorkers[wi], patch);
     }
     document.getElementById('modalOverlay').classList.remove('open');
     if (entry.noLoc) {
