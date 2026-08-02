@@ -1135,9 +1135,11 @@ function hourlyRoundedHours(clockInMs, clockOutMs) {
 }
 
 // Taux horaire worker (junior/senior selon seuilSeniorJours du client) ; customRate reste prioritaire
-function hourlyWorkerRate(w, client) {
+function hourlyWorkerRate(w, client, days) {
   if (w.customRate) return w.customRate;
-  return (w.totalDays||0) >= client.seuilSeniorJours ? client.tarifWorkerSeniorHeure : client.tarifWorkerJuniorHeure;
+  const sortedDays = days && days.length ? [...days].sort() : null;
+  const counter = sortedDays ? workerSeniorityDaysBeforeDate(w, client, sortedDays[0]) : workerSeniorityDayCount(w, client);
+  return counter >= client.seuilSeniorJours ? client.tarifWorkerSeniorHeure : client.tarifWorkerJuniorHeure;
 }
 
 // Montant facturé au patron pour N heures : tarif horaire client + commission recruteur en sus
@@ -1211,6 +1213,22 @@ function workerSeniorityDayCount(w, client) {
 function isWorkerSeniorForClient(w, client) {
   const seniorRate = client.tarifWorkerSeniorJour!=null ? client.tarifWorkerSeniorJour : client.tarifWorkerSeniorHeure;
   return workerSeniorityDayCount(w,client) >= client.seuilSeniorJours || (seniorRate!=null && (w.customRate||0) >= seniorRate);
+}
+
+// Jours comptant pour l'ancienneté d'un worker à un client, AVANT une date donnée (ordre chronologique
+// réel des pointages 'start'). Sert à figer le palier junior/senior d'une semaine passée sur ce qu'il
+// était à l'époque, plutôt que sur le compteur actuel — sinon un passage senior aujourd'hui modifierait
+// rétroactivement la commission de semaines déjà passées.
+function workerSeniorityDaysBeforeDate(w, client, beforeDate) {
+  const dates = new Set();
+  allEntries.forEach(e => {
+    if (e.workerId!==w.id || e.type!=='start' || !(e.date<beforeDate)) return;
+    const cid = resolveClientIdForEntry(e);
+    const c = getClient(cid);
+    const counts = client.comptePourAnciennete ? c.comptePourAnciennete : cid===client.id;
+    if (counts) dates.add(e.date);
+  });
+  return dates.size;
 }
 
 // Infos de dépassement pour un worker/jour donné, ou null si pas assez de données pour juger.
@@ -1329,10 +1347,10 @@ function computeSalary(wId, daysArr, client) {
   const w=allWorkers.find(x=>x.id===wId);
   if(!w) return {sal:0,d220:0,d250:0};
   if(w.customRate) return {sal:w.customRate*daysArr.length,d220:0,d250:daysArr.length};
-  const counter = workerSeniorityDayCount(w, client);
-  const totalBefore = counter-daysArr.length;
+  const sortedDays = [...daysArr].sort();
+  const totalBefore = sortedDays.length ? workerSeniorityDaysBeforeDate(w, client, sortedDays[0]) : workerSeniorityDayCount(w, client);
   let sal=0,d220=0,d250=0;
-  for(let i=0;i<daysArr.length;i++){if(totalBefore+i<client.seuilSeniorJours){sal+=client.tarifWorkerJuniorJour;d220++;}else{sal+=client.tarifWorkerSeniorJour;d250++;}}
+  for(let i=0;i<sortedDays.length;i++){if(totalBefore+i<client.seuilSeniorJours){sal+=client.tarifWorkerJuniorJour;d220++;}else{sal+=client.tarifWorkerSeniorJour;d250++;}}
   return {sal,d220,d250};
 }
 
@@ -1403,7 +1421,7 @@ function computeHourlySalaryForDays(wId, days, client) {
     if(s&&en) hours+=hourlyRoundedHours(s.timestamp, en.timestamp);
   });
   const w=allWorkers.find(x=>x.id===wId)||{};
-  const rate=hourlyWorkerRate(w, client);
+  const rate=hourlyWorkerRate(w, client, days);
   return {hours, sal: Math.round(hours*rate*100)/100};
 }
 
