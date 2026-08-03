@@ -434,6 +434,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
           <div class="worker-av" id="ficheAv"></div>
           <div><div class="worker-name" id="ficheName"></div><div class="worker-meta" id="ficheRateTxt"></div></div>
           <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+            <div class="incident-badge" id="ficheSuspendedBadge" style="display:none;background:rgba(201,76,76,0.12);border-color:rgba(201,76,76,0.3);color:var(--danger);">⛔ Suspendu</div>
             <div class="incident-badge" id="ficheLateCancelBadge" style="display:none;background:rgba(201,168,76,0.12);border-color:rgba(201,168,76,0.3);color:var(--gold);">⏳ <span id="ficheLateCancelCount">0</span> annulation(s) tardive(s)</div>
             <div class="incident-badge" id="ficheIncBadge" style="display:none;">⚠️ <span id="ficheIncCount">0</span></div>
           </div>
@@ -443,6 +444,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
           <div class="fiche-stat"><div class="fiche-stat-val" id="ficheEarned">$0</div><div class="fiche-stat-lbl">Gagné</div></div>
           <div class="fiche-stat"><div class="fiche-stat-val" id="ficheChantiers">0</div><div class="fiche-stat-lbl">Chantiers</div></div>
         </div>
+        <button class="btn" id="ficheSuspendBtn" style="margin-top:10px;" onclick="toggleSuspendWorker()">⛔ Suspendre</button>
       </div>
       <div class="card" style="margin-bottom:10px;">
         <div class="card-title">Activité 8 semaines</div>
@@ -547,6 +549,8 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
   <!-- PAIEMENTS -->
   <div class="tcontent" id="tab-paiements">
+    <input class="inp" id="paySearchInput" placeholder="🔎 Chercher un worker…" style="margin-bottom:14px;" oninput="setPaySearch(this.value)">
+    <div id="payWeeklySummary" style="margin-bottom:18px;"></div>
     <div id="payList"></div>
   </div>
 
@@ -748,6 +752,22 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
   </div>
 </div>
 
+<div class="modal-overlay" id="editHoursModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Modifier les heures réelles</div>
+    <div class="modal-sub" id="editHoursSub"></div>
+    <label class="inp-lbl">Heures réelles travaillées</label>
+    <input class="inp" id="editHoursInput" type="number" step="0.25" min="0" max="24" placeholder="ex: 4.5">
+    <div class="overage-margin" id="editHoursPreview" style="margin-top:10px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-surface" onclick="document.getElementById('editHoursModal').classList.remove('open')">Annuler</button>
+      <button class="btn btn-forest" onclick="saveEditHours()">Enregistrer</button>
+    </div>
+    <button class="btn btn-danger" style="margin-top:8px;" onclick="resetEditHours()">↺ Réinitialiser (forfait plein)</button>
+  </div>
+</div>
+
 <!-- DÉPASSEMENT FORFAIT JOUR -->
 <div class="overage-banner" id="overageBanner">
   <div class="overage-sheet">
@@ -784,7 +804,7 @@ html,body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--t
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, deleteField, query, where, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD7TxMgSh0hkuz0jgAFCh3I7SvQkHzorgc",
@@ -826,6 +846,8 @@ let allWorkers = [];
 let allEntries = [];
 let dashWeekOff=0, galWeekOff=0, ptgDayFilter=null;
 let ptgExpandedWeeks = new Set();
+let payExpandedWeeks = new Set();
+let paySearchQuery = '';
 let planWeekOff=0, planViewMode='week', planSelectedDate=todayStr();
 let galFilter = 'all';
 let currentFicheId = null;
@@ -1196,6 +1218,18 @@ function workerDaysByClient(wId) {
   return counts;
 }
 
+// Comme workerDaysByClient, mais retourne les dates (triées) plutôt qu'un compte — nécessaire pour
+// retrouver les heures modifiées manuellement jour par jour (voir manualHoursForDay).
+function workerDatesByClient(wId) {
+  const map = {};
+  allEntries.filter(e=>e.workerId===wId && e.type==='start').forEach(e=>{
+    const cid = resolveClientIdForEntry(e);
+    (map[cid]=map[cid]||[]).push(e.date);
+  });
+  Object.values(map).forEach(arr=>arr.sort());
+  return map;
+}
+
 // Client "par défaut" d'un worker pour l'affichage (badge taux, etc.) : celui de son pointage
 // le plus récent, ou Paysagisme s'il n'a encore jamais pointé.
 function resolveWorkerDefaultClient(w) {
@@ -1344,35 +1378,57 @@ function monthlyExtrasTotal(monthKey, clientId) {
     .reduce((s,e)=>s+(e.overageAdjustment.margin||0),0);
 }
 
+// Heures réelles modifiées manuellement pour un worker/jour donné (mode forfait uniquement),
+// stockées sur le pointage 'end' du jour. Proratise salaire worker + facturation patron + commission
+// sur une base de 8h — voir computeSalary. null = jour non modifié, forfait plein.
+function manualHoursForDay(workerId, date) {
+  const en = allEntries.find(e=>e.workerId===workerId&&e.date===date&&e.type==='end');
+  return en && en.manualHours!=null ? en.manualHours : null;
+}
+
 // daysArr : jours travaillés par ce worker POUR CE CLIENT (déjà filtrés en amont).
+// Retourne aussi bossAmt (montant facturé au patron pour ces jours) pour que les jours à heures
+// modifiées soient proratisés cohéremment côté patron ET côté worker (donc côté commission, qui
+// se déduit ailleurs de bossAmt-sal).
 function computeSalary(wId, daysArr, client) {
   client = client || CLIENT;
   const w=allWorkers.find(x=>x.id===wId);
-  if(!w) return {sal:0,d220:0,d250:0};
-  if(w.customRate) return {sal:w.customRate*daysArr.length,d220:0,d250:daysArr.length};
+  if(!w) return {sal:0,d220:0,d250:0,bossAmt:0};
   const sortedDays = [...daysArr].sort();
   const totalBefore = sortedDays.length ? workerSeniorityDaysBeforeDate(w, client, sortedDays[0]) : workerSeniorityDayCount(w, client);
-  let sal=0,d220=0,d250=0;
-  for(let i=0;i<sortedDays.length;i++){if(totalBefore+i<client.seuilSeniorJours){sal+=client.tarifWorkerJuniorJour;d220++;}else{sal+=client.tarifWorkerSeniorJour;d250++;}}
-  return {sal,d220,d250};
+  const fullDayBoss = client.tarifClientJour*(1+client.commissionAgencePct/100);
+  let sal=0,d220=0,d250=0,bossAmt=0;
+  for(let i=0;i<sortedDays.length;i++){
+    const isSeniorDay = totalBefore+i>=client.seuilSeniorJours;
+    const fullWorkerRate = w.customRate || (isSeniorDay?client.tarifWorkerSeniorJour:client.tarifWorkerJuniorJour);
+    const mh = manualHoursForDay(wId, sortedDays[i]);
+    const ratio = mh!=null ? mh/8 : 1;
+    sal += fullWorkerRate*ratio;
+    bossAmt += fullDayBoss*ratio;
+    if (w.customRate || isSeniorDay) d250++; else d220++;
+  }
+  return {sal:Math.round(sal*100)/100, d220, d250, bossAmt:Math.round(bossAmt*100)/100};
 }
 
 // Solde dû (ardoise) — jours travaillés depuis toujours × taux (tous clients confondus, chacun à
 // son propre tarif), indépendant du calcul de commission de la semaine affichée sur le dashboard.
 function totalEarned(w) {
   if (w.customRate) return (w.totalDays||0)*w.customRate + (w.extraAmount||0);
-  const byClient = workerDaysByClient(w.id);
+  const byClient = workerDatesByClient(w.id);
   let sum=0, sharedIdx=0;
   Object.keys(byClient).forEach(cid=>{
     const c = getClient(cid);
-    const days = byClient[cid];
-    if (c.comptePourAnciennete) {
-      for(let i=0;i<days;i++){ sum += (sharedIdx<c.seuilSeniorJours?c.tarifWorkerJuniorJour:c.tarifWorkerSeniorJour); sharedIdx++; }
-    } else {
-      for(let i=0;i<days;i++){ sum += (i<c.seuilSeniorJours?c.tarifWorkerJuniorJour:c.tarifWorkerSeniorJour); }
-    }
+    const dates = byClient[cid];
+    let localIdx=0;
+    dates.forEach(date=>{
+      const isSeniorDay = c.comptePourAnciennete ? sharedIdx>=c.seuilSeniorJours : localIdx>=c.seuilSeniorJours;
+      const fullRate = isSeniorDay?c.tarifWorkerSeniorJour:c.tarifWorkerJuniorJour;
+      const mh = manualHoursForDay(w.id, date);
+      sum += fullRate*(mh!=null?mh/8:1);
+      sharedIdx++; localIdx++;
+    });
   });
-  return sum+(w.extraAmount||0);
+  return Math.round(sum*100)/100+(w.extraAmount||0);
 }
 function totalPaid(w) {
   return (w.payments||[]).reduce((s,p)=>s+(p.amount||0),0);
@@ -1444,11 +1500,12 @@ function renderDashboard() {
       boss=hourlyBossTotal(h.hours, client);
       metaTxt=h.hours?h.hours.toFixed(2)+'h':'0h';
     } else {
-      const {sal:s,d220,d250}=computeSalary(w.id,days,client);
+      const {sal:s,d220,d250,bossAmt}=computeSalary(w.id,days,client);
       sal=s;
-      boss=bossTotal(days.length, client);
+      boss=bossAmt;
       const seniorRateTxt=w.customRate||client.tarifWorkerSeniorJour;
-      metaTxt=days.length+'j · '+(d220?d220+'×$'+client.tarifWorkerJuniorJour:'')+( d220&&d250?' + ':'')+(d250?d250+'×$'+seniorRateTxt:'');
+      const modifCount=days.filter(d=>manualHoursForDay(w.id,d)!=null).length;
+      metaTxt=days.length+'j · '+(d220?d220+'×$'+client.tarifWorkerJuniorJour:'')+( d220&&d250?' + ':'')+(d250?d250+'×$'+seniorRateTxt:'')+(modifCount?' · ✏️ '+modifCount+' modifié'+(modifCount>1?'s':''):'');
     }
     totalBoss+=boss; totalPaid+=sal+extra;
     const isSenior=isWorkerSeniorForClient(w, client);
@@ -1508,10 +1565,10 @@ function renderWorkers() {
     const pct=Math.min(counter/client.seuilSeniorJours*100,100);
     const days=getWorkerWeekDaysForClient(w.id,0,client.id);
     const sal = isHoraire ? computeHourlySalaryForDays(w.id,days,client).sal : computeSalary(w.id,days,client).sal;
-    return '<div class="worker-card">' +
+    return '<div class="worker-card'+(w.suspended?' suspended':'')+'">' +
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">' +
       '<div class="worker-av'+(isSenior?' senior':'')+'">'+w.name[0].toUpperCase()+'</div>' +
-      '<div><div class="worker-name">'+w.name+'</div><div class="worker-meta">'+(multiClient?client.nom+' · ':'')+counter+' jours total · '+days.length+'j cette semaine</div></div>' +
+      '<div><div class="worker-name">'+w.name+(w.suspended?' <span style="color:var(--danger);font-size:11px;font-weight:700;">⛔ SUSPENDU</span>':'')+'</div><div class="worker-meta">'+(multiClient?client.nom+' · ':'')+counter+' jours total · '+days.length+'j cette semaine</div></div>' +
       '<div class="rate-badge '+(isSenior?'senior':'normal')+'" style="margin-left:auto;">$'+rate+unit+'</div></div>' +
       '<div class="prog-row"><span class="prog-lbl">Déblocage $'+seniorRate+unit+'</span><span class="prog-val">'+counter+'/'+client.seuilSeniorJours+'j</span></div>' +
       '<div class="prog-track"><div class="prog-fill prog-gold" style="width:'+pct+'%"></div></div>' +
@@ -1556,6 +1613,17 @@ window.deleteWorker = async function(wId) {
   showToast('Supprimé');
 };
 
+// Suspend/réactive un worker : plus aucune dispo/créneau visible côté worker.html tant que suspendu,
+// mais son profil (historique, paye) reste intact et visible côté admin.
+window.toggleSuspendWorker = async function() {
+  const w=allWorkers.find(x=>x.id===currentFicheId);
+  if(!w) return;
+  const suspending = !w.suspended;
+  if(!confirm((suspending?'Suspendre ':'Réactiver ')+w.name+' ?')) return;
+  await setDoc(doc(db,'workers',w.id), {suspended: suspending}, {merge:true});
+  showToast(suspending?'⛔ Worker suspendu':'✅ Worker réactivé');
+};
+
 // ── POINTAGES ──
 function groupEntriesByPersonDay(entries) {
   const groups = {};
@@ -1572,6 +1640,9 @@ function renderPersonRow(g) {
   const photo = s&&s.photo ? s.photo : (e&&e.photo ? e.photo : null);
   const photo2 = s&&s.photo&&e&&e.photo ? e.photo : null;
   const addr = (s&&s.address) || (e&&e.address) || '';
+  const rowClient = (s||e) ? getClient(resolveClientIdForEntry(s||e)) : null;
+  const canEditHours = s && e && rowClient && rowClient.modeCalcul!=='horaire';
+  const mh = e ? e.manualHours : null;
   return '<div class="ptg-person-row">' +
     '<div class="ptg-person-info">' +
       '<div class="ptg-person-name">'+g.workerName+'</div>' +
@@ -1579,7 +1650,9 @@ function renderPersonRow(g) {
       '<div class="ptg-person-times">' +
         (s?'<span class="ptg-time-tag start">🌅 '+s.time+(s.noLoc||!s.gps?' · 📡 sans loc':'')+'</span>':'<span class="ptg-time-tag missing">🌅 —</span>') +
         (e?'<span class="ptg-time-tag end">🌇 '+e.time+(e.noLoc||!e.gps?' · 📡 sans loc':'')+'</span>':'<span class="ptg-time-tag missing">🌇 en cours</span>') +
+        (mh!=null?'<span class="ptg-time-tag" style="background:rgba(201,168,76,0.15);color:var(--gold);">✏️ modifié : '+mh+'h</span>':'') +
       '</div>' +
+      (canEditHours?'<button style="background:var(--cream2);border:none;color:var(--forest);font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;cursor:pointer;margin-top:4px;" onclick="openEditHours(\''+g.workerId+'\',\''+g.date+'\')" title="Modifier les heures réelles">✏️ Heures</button>':'') +
     '</div>' +
     '<div class="ptg-person-thumbs">' +
       (s&&s.photo?'<img src="'+s.photo+'" class="entry-thumb" onclick="viewPhoto(\''+s.id+'\')">':'') +
@@ -1675,6 +1748,73 @@ window.deleteEntry = async function(id) {
     }
   }
   showToast('Supprimé');
+};
+
+// Modifie les heures réellement travaillées pour un worker/jour (forfait jour uniquement) : proratise
+// le salaire worker, la facturation patron et donc la commission sur une base de 8h (voir computeSalary).
+let editingHoursCtx = null;
+
+window.openEditHours = function(workerId, date) {
+  const w = allWorkers.find(x=>x.id===workerId);
+  const en = allEntries.find(e=>e.workerId===workerId&&e.date===date&&e.type==='end');
+  if (!en) { showToast('Départ manquant pour ce jour'); return; }
+  const client = getClient(resolveClientIdForEntry(en));
+  editingHoursCtx = {workerId, date, entryId: en.id, client, worker: w};
+  document.getElementById('editHoursSub').textContent = (w?w.name:'')+' · '+formatDate(date)+' · forfait plein 8h';
+  document.getElementById('editHoursInput').value = en.manualHours!=null ? en.manualHours : '';
+  updateEditHoursPreview();
+  document.getElementById('editHoursModal').classList.add('open');
+};
+
+window.updateEditHoursPreview = function() {
+  if (!editingHoursCtx) return;
+  const {client, worker, date} = editingHoursCtx;
+  const h = parseFloat(document.getElementById('editHoursInput').value);
+  const el = document.getElementById('editHoursPreview');
+  if (isNaN(h) || h<0) { el.innerHTML = ''; return; }
+  const ratio = h/8;
+  // Même règle que computeSalary : le palier de CE jour précis (pas le statut actuel du worker).
+  const isSeniorDay = worker && workerSeniorityDaysBeforeDate(worker, client, date)>=client.seuilSeniorJours;
+  const fullWorkerRate = (worker&&worker.customRate) || (isSeniorDay?client.tarifWorkerSeniorJour:client.tarifWorkerJuniorJour);
+  const fullDayBoss = client.tarifClientJour*(1+client.commissionAgencePct/100);
+  const workerAmt = Math.round(fullWorkerRate*ratio*100)/100;
+  const bossAmt = Math.round(fullDayBoss*ratio*100)/100;
+  el.innerHTML = '<span>Worker : $'+workerAmt+' · Patron : $'+bossAmt+'</span><b>Commission : $'+Math.round((bossAmt-workerAmt)*100)/100+'</b>';
+};
+document.addEventListener('input', e=>{ if(e.target && e.target.id==='editHoursInput') updateEditHoursPreview(); });
+
+window.saveEditHours = async function() {
+  if (!editingHoursCtx) return;
+  const {entryId} = editingHoursCtx;
+  const raw = document.getElementById('editHoursInput').value.trim();
+  if (raw==='') { showToast('Entre des heures ou utilise Réinitialiser'); return; }
+  const h = parseFloat(raw);
+  if (isNaN(h) || h<0 || h>24) { showToast('Heures invalides'); return; }
+  try {
+    await setDoc(doc(db,'entries',entryId), {manualHours: h}, {merge:true});
+    showToast('✅ Heures modifiées : '+h+'h');
+  } catch(err) {
+    logError('Modification heures échouée : '+err.message, 'saveEditHours');
+    showToast('❌ Échec de l\'enregistrement');
+    return;
+  }
+  document.getElementById('editHoursModal').classList.remove('open');
+  editingHoursCtx = null;
+};
+
+window.resetEditHours = async function() {
+  if (!editingHoursCtx) return;
+  const {entryId} = editingHoursCtx;
+  try {
+    await setDoc(doc(db,'entries',entryId), {manualHours: deleteField()}, {merge:true});
+    showToast('✅ Heures réinitialisées (forfait plein)');
+  } catch(err) {
+    logError('Réinitialisation heures échouée : '+err.message, 'resetEditHours');
+    showToast('❌ Échec de l\'enregistrement');
+    return;
+  }
+  document.getElementById('editHoursModal').classList.remove('open');
+  editingHoursCtx = null;
 };
 
 window.viewPhoto = function(entryId) {
@@ -1773,6 +1913,11 @@ function renderFicheDetail() {
   document.getElementById('ficheDays').textContent=w.totalDays||0;
 
   document.getElementById('ficheEarned').textContent='$'+totalEarned(w).toLocaleString();
+
+  document.getElementById('ficheSuspendedBadge').style.display = w.suspended ? 'flex' : 'none';
+  const suspBtn = document.getElementById('ficheSuspendBtn');
+  suspBtn.textContent = w.suspended ? '✅ Réactiver' : '⛔ Suspendre';
+  suspBtn.className = 'btn '+(w.suspended?'btn-forest':'btn-danger');
 
   const addrs=[...new Set(entries.filter(e=>e.address).map(e=>e.address))];
   document.getElementById('ficheChantiers').textContent=addrs.length;
@@ -2032,10 +2177,90 @@ window.addFichePayment = async function(){
 };
 
 // ── PAIEMENTS (ardoise cumulée) ──
+// Gagné par un worker pour une semaine donnée (off), tous clients confondus — regroupe ses jours
+// travaillés cette semaine-là par client (les tarifs diffèrent d'un client à l'autre) puis some.
+function workerWeekEarnings(w, off) {
+  const days = getWorkerWeekDays(w.id, off);
+  if (!days.length) return {days:0, sal:0};
+  const byClient = {};
+  days.forEach(date=>{
+    const startEntry = allEntries.find(e=>e.workerId===w.id&&e.date===date&&e.type==='start');
+    const cid = startEntry ? resolveClientIdForEntry(startEntry) : 'paysagisme';
+    (byClient[cid]=byClient[cid]||[]).push(date);
+  });
+  let sal=0;
+  Object.keys(byClient).forEach(cid=>{
+    const client = getClient(cid);
+    const clientDays = byClient[cid];
+    if (client.modeCalcul==='horaire') sal += computeHourlySalaryForDays(w.id, clientDays, client).sal;
+    else sal += computeSalary(w.id, clientDays, client).sal;
+  });
+  return {days: days.length, sal: Math.round(sal*100)/100};
+}
+
+window.setPaySearch = function(v){ paySearchQuery=v; renderPaiements(); };
+
+window.togglePayWeek = function(weekKey){
+  if(payExpandedWeeks.has(weekKey)) payExpandedWeeks.delete(weekKey);
+  else payExpandedWeeks.add(weekKey);
+  renderPaiements();
+};
+
+// Résumé hebdomadaire en lecture seule : semaine → worker → jours/€, replié pour les semaines passées.
+function renderPayWeeklySummary() {
+  if (!allEntries.length) return '';
+  const weeks = {};
+  allEntries.forEach(e=>{
+    const wk = ymd(mondayOf(e.date));
+    (weeks[wk]=weeks[wk]||new Set()).add(e.workerId);
+  });
+  const currentWeekKey = ymd(mondayOf(todayStr()));
+  const weekKeys = Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
+
+  return weekKeys.map(wk=>{
+    const workerIds = [...weeks[wk]];
+    const off = Math.round((mondayOf(todayStr())-new Date(wk+'T00:00:00'))/(-7*86400000));
+    const rows = workerIds.map(wid=>{
+      const w = allWorkers.find(x=>x.id===wid);
+      if (!w) return null;
+      const {days, sal} = workerWeekEarnings(w, off);
+      return days ? {name:w.name, days, sal} : null;
+    }).filter(Boolean).sort((a,b)=>b.sal-a.sal);
+    if (!rows.length) return '';
+
+    const isCurrent = wk===currentWeekKey;
+    const isOpen = isCurrent ? !payExpandedWeeks.has('closed:'+wk) : payExpandedWeeks.has(wk);
+    const toggleArg = isCurrent ? 'closed:'+wk : wk;
+    const wkStart = new Date(wk+'T00:00:00');
+    const wkEnd = new Date(wkStart); wkEnd.setDate(wkStart.getDate()+6);
+    const label = wkStart.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' – '+wkEnd.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+    const weekTotal = rows.reduce((s,r)=>s+r.sal,0);
+
+    const body = isOpen ? '<div class="ptg-week-body">' + rows.map(r=>
+      '<div class="stat-row"><div class="stat-info"><div class="stat-name">'+r.name+'</div>' +
+      '<div class="stat-meta">'+r.days+' jour'+(r.days>1?'s':'')+'</div></div>' +
+      '<div class="stat-right"><div class="stat-val">$'+r.sal.toLocaleString()+'</div></div></div>'
+    ).join('') + '</div>' : '';
+
+    return '<div class="ptg-week">' +
+      '<div class="ptg-week-head'+(isCurrent?' current':'')+'" onclick="togglePayWeek(\''+toggleArg+'\')">' +
+      '<div><div class="ptg-week-title">Semaine du '+label+(isCurrent?' · cette semaine':'')+'</div>' +
+      '<div class="ptg-week-sub">'+rows.length+' worker'+(rows.length>1?'s':'')+' · $'+weekTotal.toLocaleString()+'</div></div>' +
+      '<div class="ptg-week-chevron'+(isOpen?' open':'')+'">▼</div></div>' +
+      body + '</div>';
+  }).join('');
+}
+
 function renderPaiements(){
+  const summaryEl=document.getElementById('payWeeklySummary');
+  if (summaryEl) summaryEl.innerHTML = renderPayWeeklySummary();
+
   const el=document.getElementById('payList');
   if(!allWorkers.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun worker</div>';return;}
-  el.innerHTML=allWorkers.map(w=>{
+  const q=paySearchQuery.trim().toLowerCase();
+  const workers = q ? allWorkers.filter(w=>w.name.toLowerCase().includes(q)) : allWorkers;
+  if(!workers.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-soft);">Aucun worker trouvé</div>';return;}
+  el.innerHTML=workers.map(w=>{
     const earned=totalEarned(w);
     const paid=totalPaid(w);
     const due=earned-paid;
@@ -2771,11 +2996,13 @@ window.copyRecap = function(){
       if(extra) txt+=' + $'+extra;
       txt+=' = $'+(h.sal+extra)+'\n';
     } else {
-      const {sal,d220,d250}=computeSalary(w.id,days,client);
-      tb+=bossTotal(days.length,client); tp+=sal+extra;
+      const {sal,d220,d250,bossAmt}=computeSalary(w.id,days,client);
+      tb+=bossAmt; tp+=sal+extra;
+      const modifCount=days.filter(d=>manualHoursForDay(w.id,d)!=null).length;
       txt+=w.name+': '+days.length+'j';
       if(d220) txt+=' ('+d220+'×$'+client.tarifWorkerJuniorJour+')';
       if(d250) txt+=' ('+d250+'×$'+(w.customRate||client.tarifWorkerSeniorJour)+')';
+      if(modifCount) txt+=' ✏️'+modifCount+' modifié'+(modifCount>1?'s':'');
       if(extra) txt+=' + $'+extra;
       txt+=' = $'+(sal+extra)+'\n';
     }
@@ -2836,8 +3063,10 @@ window.exportPDF = function(){
         workerHours+=h;
         doc.text(h.toFixed(2)+'h', 210-m-4, y, {align:'right'});
       } else {
-        doc.text('$'+client.tarifClientJour, 210-m-4, y, {align:'right'});
-        workerTotal+=client.tarifClientJour;
+        const mh=manualHoursForDay(w.id,d);
+        const dayAmt=mh!=null?Math.round(client.tarifClientJour*mh/8*100)/100:client.tarifClientJour;
+        doc.text('$'+dayAmt+(mh!=null?' ('+mh+'h)':''), 210-m-4, y, {align:'right'});
+        workerTotal+=dayAmt;
       }
       doc.setTextColor(180,180,180);
       doc.setLineWidth(0.3);

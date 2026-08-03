@@ -1359,7 +1359,7 @@ function renderDispos() {
   const today = todayStr();
   const upcoming = allSlots.filter(s => s.date >= today);
 
-  const available = upcoming.filter(s => {
+  const available = currentWorker.suspended ? [] : upcoming.filter(s => {
     const signups = s.signups||[];
     return signups.length < s.capacity && !signups.some(su=>su.workerId===currentWorker.id) && isSlotOpenForSignup(s);
   });
