@@ -3017,6 +3017,18 @@ window.exportPDF = function(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   let y=20; const m=18;
+  const pageBottom=272; // limite basse du contenu ; en dessous on bascule sur une nouvelle page
+
+  // Ajoute une page si le prochain bloc (hauteur h) ne rentre pas avant pageBottom.
+  function ensureSpace(h){
+    if (y+h > pageBottom) {
+      doc.addPage();
+      y=20;
+      doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(140,140,140);
+      doc.text('Récapitulatif de la semaine — '+client.nom+' · '+weekLbl(dashWeekOff)+' (suite)', m, y);
+      y+=10;
+    }
+  }
 
   // ── HEADER ──
   doc.setFillColor(45,74,45);
@@ -3034,7 +3046,8 @@ window.exportPDF = function(){
     const days=getWorkerWeekDaysForClient(w.id,dashWeekOff,client.id);
     if(!days.length) return;
 
-    // Worker name header
+    // Worker name header (+ ses lignes de jours, pour ne pas le couper juste après son nom)
+    ensureSpace(14+days.length*9);
     doc.setFillColor(237,233,224);
     doc.roundedRect(m,y,210-m*2,10,1,1,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(26,42,26);
@@ -3049,6 +3062,7 @@ window.exportPDF = function(){
 
     let workerTotal=0, workerHours=0;
     days.forEach(d=>{
+      ensureSpace(9);
       const entry=byDay[d];
       const dateStr=new Date(d).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});
       const addr=entry?entry.address:'—';
@@ -3076,6 +3090,7 @@ window.exportPDF = function(){
 
     if(isHoraire) workerTotal=Math.round(workerHours*client.tarifClientHeure*100)/100;
     totalDays+=days.length; totalHours+=workerHours; grandTotal+=workerTotal;
+    ensureSpace(14);
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(45,74,45);
     doc.text('Sous-total '+w.name+' : '+(isHoraire?workerHours.toFixed(2)+'h':days.length+' jour(s)'), m+4, y);
     doc.text('$'+workerTotal.toLocaleString(), 210-m-4, y, {align:'right'});
@@ -3084,6 +3099,7 @@ window.exportPDF = function(){
 
   // ── TOTAL BOX ──
   y+=4;
+  ensureSpace(36);
   doc.setFillColor(240,248,230);
   doc.roundedRect(m,y,210-m*2,36,3,3,'F');
   doc.setDrawColor(122,158,122);
@@ -3107,9 +3123,14 @@ window.exportPDF = function(){
   doc.text('TOTAL À RÉGLER :', m+6, y+33);
   doc.text('$'+net.toLocaleString(), 210-m-4, y+33, {align:'right'});
 
-  // ── FOOTER ──
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(160,160,160);
-  doc.text('Document généré le '+new Date().toLocaleDateString('fr-FR')+' · Get Your Shift', m, 285);
+  // ── FOOTER (sur chaque page) ──
+  const pageCount=doc.internal.getNumberOfPages();
+  for(let p=1;p<=pageCount;p++){
+    doc.setPage(p);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(160,160,160);
+    doc.text('Document généré le '+new Date().toLocaleDateString('fr-FR')+' · Get Your Shift', m, 285);
+    if(pageCount>1) doc.text('Page '+p+'/'+pageCount, 210-m-2, 285, {align:'right'});
+  }
 
   doc.save('facture_boss_'+client.id+'_'+weekLbl(dashWeekOff).replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
   showToast('📄 PDF boss téléchargé !');
