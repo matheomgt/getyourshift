@@ -1215,20 +1215,23 @@ function isWorkerSeniorForClient(w, client) {
   return workerSeniorityDayCount(w,client) >= client.seuilSeniorJours || (seniorRate!=null && (w.customRate||0) >= seniorRate);
 }
 
-// Jours comptant pour l'ancienneté d'un worker à un client, AVANT une date donnée (ordre chronologique
-// réel des pointages 'start'). Sert à figer le palier junior/senior d'une semaine passée sur ce qu'il
-// était à l'époque, plutôt que sur le compteur actuel — sinon un passage senior aujourd'hui modifierait
-// rétroactivement la commission de semaines déjà passées.
+// Jours comptant pour l'ancienneté d'un worker à un client, AVANT une date donnée. Sert à figer le
+// palier junior/senior d'une semaine sur ce qu'il était à l'époque, plutôt que sur le compteur actuel —
+// sinon un passage senior aujourd'hui modifierait rétroactivement la commission de semaines déjà passées.
+// Ancré sur le compteur officiel (workerSeniorityDayCount) moins les jours à partir de la date donnée,
+// plutôt que recompté intégralement depuis les pointages — ça reste juste même si un pointage passé a
+// été modifié/supprimé après coup sans que le compteur ait bougé (ex: arrivée supprimée après-coup).
 function workerSeniorityDaysBeforeDate(w, client, beforeDate) {
+  const counter = workerSeniorityDayCount(w, client);
   const dates = new Set();
   allEntries.forEach(e => {
-    if (e.workerId!==w.id || e.type!=='start' || !(e.date<beforeDate)) return;
+    if (e.workerId!==w.id || e.type!=='start' || e.date<beforeDate) return;
     const cid = resolveClientIdForEntry(e);
     const c = getClient(cid);
     const counts = client.comptePourAnciennete ? c.comptePourAnciennete : cid===client.id;
     if (counts) dates.add(e.date);
   });
-  return dates.size;
+  return Math.max(0, counter-dates.size);
 }
 
 // Infos de dépassement pour un worker/jour donné, ou null si pas assez de données pour juger.
