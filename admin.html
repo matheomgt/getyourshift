@@ -3019,13 +3019,21 @@ window.exportPDF = function(){
   let y=20; const m=18;
   const pageBottom=272; // limite basse du contenu ; en dessous on bascule sur une nouvelle page
 
+  // Le PDF est destiné au patron (anglophone, Australie) — toujours en anglais, indépendamment
+  // de la langue de l'interface admin (français).
+  function pdfWeekLbl(off){
+    const s=getWeekStart(off), e=getWeekEnd(off);
+    return s.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+' – '+e.toLocaleDateString('en-AU',{day:'2-digit',month:'short'});
+  }
+  const weekLabel = pdfWeekLbl(dashWeekOff);
+
   // Ajoute une page si le prochain bloc (hauteur h) ne rentre pas avant pageBottom.
   function ensureSpace(h){
     if (y+h > pageBottom) {
       doc.addPage();
       y=20;
       doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(140,140,140);
-      doc.text('Récapitulatif de la semaine — '+client.nom+' · '+weekLbl(dashWeekOff)+' (suite)', m, y);
+      doc.text('Weekly Summary — '+client.nom+' · '+weekLabel+' (cont\'d)', m, y);
       y+=10;
     }
   }
@@ -3034,13 +3042,13 @@ window.exportPDF = function(){
   doc.setFillColor(45,74,45);
   doc.roundedRect(m,y,210-m*2,18,2,2,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(244,241,235);
-  doc.text('Récapitulatif de la semaine — '+client.nom,m+6,y+12);
+  doc.text('Weekly Summary — '+client.nom,m+6,y+12);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(168,197,160);
-  doc.text(weekLbl(dashWeekOff), 210-m-2, y+12, {align:'right'});
+  doc.text(weekLabel, 210-m-2, y+12, {align:'right'});
   y+=26;
 
   // ── PER WORKER SECTION ──
-  let totalDays=0, totalHours=0, grandTotal=0;
+  let totalDays=0, totalHours=0, grandTotal=0, anyAdjusted=false;
 
   allWorkers.forEach(w=>{
     const days=getWorkerWeekDaysForClient(w.id,dashWeekOff,client.id);
@@ -3064,7 +3072,7 @@ window.exportPDF = function(){
     days.forEach(d=>{
       ensureSpace(9);
       const entry=byDay[d];
-      const dateStr=new Date(d).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});
+      const dateStr=new Date(d).toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'2-digit'});
       const addr=entry?entry.address:'—';
       doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(60,60,60);
       doc.text(dateStr, m+4, y);
@@ -3078,6 +3086,7 @@ window.exportPDF = function(){
         doc.text(h.toFixed(2)+'h', 210-m-4, y, {align:'right'});
       } else {
         const mh=manualHoursForDay(w.id,d);
+        if(mh!=null) anyAdjusted=true;
         const dayAmt=mh!=null?Math.round(client.tarifClientJour*mh/8*100)/100:client.tarifClientJour;
         doc.text('$'+dayAmt+(mh!=null?' ('+mh+'h)':''), 210-m-4, y, {align:'right'});
         workerTotal+=dayAmt;
@@ -3092,8 +3101,8 @@ window.exportPDF = function(){
     totalDays+=days.length; totalHours+=workerHours; grandTotal+=workerTotal;
     ensureSpace(14);
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(45,74,45);
-    doc.text('Sous-total '+w.name+' : '+(isHoraire?workerHours.toFixed(2)+'h':days.length+' jour(s)'), m+4, y);
-    doc.text('$'+workerTotal.toLocaleString(), 210-m-4, y, {align:'right'});
+    doc.text('Subtotal '+w.name+': '+(isHoraire?workerHours.toFixed(2)+'h':days.length+' day(s)'), m+4, y);
+    doc.text('$'+workerTotal.toLocaleString('en-AU'), 210-m-4, y, {align:'right'});
     y+=14;
   });
 
@@ -3108,31 +3117,34 @@ window.exportPDF = function(){
 
   const commissionPct = isHoraire ? client.commissionRecruteurPct : client.commissionAgencePct;
   doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(80,80,80);
-  doc.text(isHoraire?'Total heures travaillées :':'Total jours travaillés :', m+6, y+10);
+  doc.text(isHoraire?'Total hours worked:':'Total days worked:'+(anyAdjusted?' (incl. adjusted hours)':''), m+6, y+10);
   doc.setFont('helvetica','bold');doc.setTextColor(26,42,26);
-  doc.text((isHoraire?totalHours.toFixed(2)+'h × $'+client.tarifClientHeure:totalDays+' jours × $'+client.tarifClientJour)+' = $'+grandTotal.toLocaleString(), 210-m-4, y+10, {align:'right'});
+  const totalLine = isHoraire
+    ? totalHours.toFixed(2)+'h × $'+client.tarifClientHeure+' = $'+grandTotal.toLocaleString('en-AU')
+    : (anyAdjusted ? totalDays+' days = $'+grandTotal.toLocaleString('en-AU') : totalDays+' days × $'+client.tarifClientJour+' = $'+grandTotal.toLocaleString('en-AU'));
+  doc.text(totalLine, 210-m-4, y+10, {align:'right'});
 
   const commission=Math.round(grandTotal*(commissionPct/100));
   const net=grandTotal+commission;
   doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(80,80,80);
-  doc.text((isHoraire?'Commission recruteur (':'Commission agence (')+commissionPct+'%) :', m+6, y+22);
+  doc.text((isHoraire?'Recruiter commission (':'Agency commission (')+commissionPct+'%):', m+6, y+22);
   doc.setFont('helvetica','bold');doc.setTextColor(26,42,26);
-  doc.text('+ $'+commission.toLocaleString(), 210-m-4, y+22, {align:'right'});
+  doc.text('+ $'+commission.toLocaleString('en-AU'), 210-m-4, y+22, {align:'right'});
 
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(26,42,26);
-  doc.text('TOTAL À RÉGLER :', m+6, y+33);
-  doc.text('$'+net.toLocaleString(), 210-m-4, y+33, {align:'right'});
+  doc.text('TOTAL DUE:', m+6, y+33);
+  doc.text('$'+net.toLocaleString('en-AU'), 210-m-4, y+33, {align:'right'});
 
   // ── FOOTER (sur chaque page) ──
   const pageCount=doc.internal.getNumberOfPages();
   for(let p=1;p<=pageCount;p++){
     doc.setPage(p);
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(160,160,160);
-    doc.text('Document généré le '+new Date().toLocaleDateString('fr-FR')+' · Get Your Shift', m, 285);
+    doc.text('Generated on '+new Date().toLocaleDateString('en-AU')+' · Get Your Shift', m, 285);
     if(pageCount>1) doc.text('Page '+p+'/'+pageCount, 210-m-2, 285, {align:'right'});
   }
 
-  doc.save('facture_boss_'+client.id+'_'+weekLbl(dashWeekOff).replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
+  doc.save('invoice_'+client.id+'_'+weekLabel.replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
   showToast('📄 PDF boss téléchargé !');
 };
 
