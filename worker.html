@@ -738,10 +738,13 @@ const db = getFirestore(app);
 let currentAction = 'chargement initial';
 function setCurrentAction(action) { currentAction = action; }
 async function logError(message, context) {
+  const msg = String(message);
+  // Bruit attendu (perte réseau momentanée, pas un vrai bug) — inutile de polluer le journal
+  if (msg.includes('client is offline') || msg.includes('Failed to get document because the client is offline')) return;
   try {
     const logId = 'err_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
     await setDoc(doc(db,'errorLogs',logId), {
-      message: String(message).slice(0,500),
+      message: msg.slice(0,500),
       context: (context || currentAction || '') + ' (worker)',
       userAgent: navigator.userAgent,
       timestamp: Date.now(),

@@ -822,10 +822,13 @@ const db = getFirestore(app);
 let currentAction = 'chargement initial';
 function setCurrentAction(action) { currentAction = action; }
 async function logError(message, context) {
+  const msg = String(message);
+  // Bruit attendu (perte réseau momentanée, pas un vrai bug) — inutile de polluer le journal
+  if (msg.includes('client is offline') || msg.includes('Failed to get document because the client is offline')) return;
   try {
     const logId = 'err_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
     await setDoc(doc(db,'errorLogs',logId), {
-      message: String(message).slice(0,500),
+      message: msg.slice(0,500),
       context: context || currentAction || '',
       userAgent: navigator.userAgent,
       timestamp: Date.now(),
@@ -2451,6 +2454,16 @@ window.toggleNewSlot = function(){
   }
 };
 
+// Ouvre le formulaire de création de créneau pré-rempli pour un jour donné — y compris
+// un jour déjà passé, pour ajouter rétroactivement un worker sur le planning (admin only,
+// la règle de fermeture des inscriptions à 7h ne concerne que les workers).
+window.quickCreateSlotForDay = function(dateStr) {
+  const panel = document.getElementById('newSlotPanel');
+  if (!panel.classList.contains('open')) window.toggleNewSlot();
+  document.getElementById('nsDate').value = dateStr;
+  panel.scrollIntoView({behavior:'smooth', block:'start'});
+};
+
 // Géocodage gratuit, sans clé API. Best-effort : ne bloque jamais la création/modif d'un
 // créneau. Nominatim (OpenStreetMap) d'abord, Photon (photon.komoot.io, mêmes données OSM)
 // en repli si Nominatim échoue ou refuse — une seule requête par provider, pas de boucle.
@@ -2652,13 +2665,15 @@ function renderPlanWeekGrid(pending) {
 function renderPlanDayDetail(pending) {
   const el = document.getElementById('planDayDetail');
   const slotsThatDay = allSlots.filter(s=>s.date===planSelectedDate);
+  const isPast = planSelectedDate < todayStr();
+  const addDayBtn = '<button class="btn btn-surface" style="margin-bottom:10px;" onclick="quickCreateSlotForDay(\''+planSelectedDate+'\')">+ Ajouter un créneau à ce jour'+(isPast?' (rétroactif)':'')+'</button>';
 
   if (!slotsThatDay.length) {
-    el.innerHTML = '<div class="plan-empty-day">Aucun créneau ce jour-là</div>';
+    el.innerHTML = addDayBtn + '<div class="plan-empty-day">Aucun créneau ce jour-là</div>';
     return;
   }
 
-  el.innerHTML = slotsThatDay.map(s=>{
+  el.innerHTML = addDayBtn + slotsThatDay.map(s=>{
     const signups=s.signups||[];
     const pendingForSlot=pending.filter(r=>r.slotId===s.id).map(r=>r.workerId);
     const chipsHtml = signups.length
